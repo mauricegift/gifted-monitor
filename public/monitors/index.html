@@ -37,8 +37,8 @@
   <nav id="sidebar-nav" class="flex-1 overflow-y-auto px-3 py-3"></nav>
 </aside>
 
-<div class="flex flex-col flex-1">
-  <header class="sticky top-0 z-30 border-b border-[#1e2740] bg-[#0d1117]/95 backdrop-blur-sm px-4 flex-shrink-0 rounded-b-2xl">
+<div class="flex flex-col flex-1 pt-14">
+  <header class="fixed top-0 left-0 right-0 z-30 border-b border-[#1e2740] bg-[#0d1117]/95 backdrop-blur-sm px-4 flex-shrink-0 rounded-b-2xl">
     <div class="max-w-6xl mx-auto h-14 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <button id="hamburger" onclick="toggleSidebar()" class="lg:hidden flex flex-col gap-[5px] p-1.5 rounded-lg hover:bg-white/5 transition-colors">
@@ -234,8 +234,9 @@
 
 <script src="/assets/app.js"></script>
 <script>
-let _user = null, monitors = [], _searchQuery = '', _refreshTimer = null;
+let _user = null, monitors = [], _searchQuery = '', _refreshTimer = null, _page = 1;
 let selectedMonitors = new Set();
+const PER_PAGE = 15;
 
 async function init() {
   _user = await requireAuth();
@@ -281,6 +282,9 @@ function renderMonitors() {
   const total  = monitors.length;
   const up     = monitors.filter(m => m.last_status === 'up').length;
   const down   = monitors.filter(m => m.last_status === 'down').length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if (_page > totalPages) _page = totalPages;
+  const pageItems = filtered.slice((_page - 1) * PER_PAGE, _page * PER_PAGE);
 
   const limit    = _user ? _user.monitor_limit : null;
   const atLimit  = limit !== null && total >= limit;
@@ -345,9 +349,10 @@ function renderMonitors() {
             <input type="checkbox" id="mon-select-all" class="m-cb" onchange="toggleSelectAllMon()" title="Select all"/>
             <span class="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">Select all</span>
           </label>
+          <span class="text-xs text-gray-600 ml-auto">${filtered.length} monitor${filtered.length!==1?'s':''} — page ${_page} of ${totalPages}</span>
         </div>
         <div class="space-y-3">
-          ${filtered.map(m => `
+          ${pageItems.map(m => `
             <div class="relative" style="position:relative">
               <label class="absolute top-3 left-3 z-10 cursor-pointer" style="position:absolute;top:12px;left:12px;z-index:10" onclick="event.stopPropagation()">
                 <input type="checkbox" class="m-cb mon-row-cb" data-mid="${m.id}" onchange="toggleMonCheck(${m.id},this)" ${selectedMonitors.has(m.id)?'checked':''}/>
@@ -364,17 +369,35 @@ function renderMonitors() {
               </div>
             </div>
           `).join('')}
-        </div>`
+        </div>
+
+        ${totalPages > 1 ? `
+        <div class="flex items-center justify-center gap-2 mt-6 flex-wrap">
+          <button onclick="setPage(${_page - 1})" ${_page <= 1 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg text-sm ${_page <= 1 ? 'text-gray-700 bg-white/5 cursor-not-allowed' : 'text-gray-400 bg-white/5 hover:bg-white/10 hover:text-gray-200'} transition-colors">‹ Prev</button>
+          ${Array.from({length: totalPages}, (_, i) => i + 1).map(p => `
+            <button onclick="setPage(${p})" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${p === _page ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'text-gray-500 bg-white/5 hover:bg-white/10 hover:text-gray-200'}">${p}</button>
+          `).join('')}
+          <button onclick="setPage(${_page + 1})" ${_page >= totalPages ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg text-sm ${_page >= totalPages ? 'text-gray-700 bg-white/5 cursor-not-allowed' : 'text-gray-400 bg-white/5 hover:bg-white/10 hover:text-gray-200'} transition-colors">Next ›</button>
+        </div>` : ''}
+        `
     }
   `;
+}
+
+function setPage(p) {
+  const filtered = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  _page = Math.max(1, Math.min(p, totalPages));
+  renderMonitors();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 let _searchTimer = null;
 function onSearchInput(val) {
   clearTimeout(_searchTimer);
-  _searchTimer = setTimeout(() => { _searchQuery = val.trim(); renderMonitors(); }, 250);
+  _searchTimer = setTimeout(() => { _page = 1; _searchQuery = val.trim(); renderMonitors(); }, 250);
 }
-function clearSearch() { _searchQuery = ''; renderMonitors(); }
+function clearSearch() { _page = 1; _searchQuery = ''; renderMonitors(); }
 
 // ── Bulk selection ─────────────────────────────────────────────────
 function toggleMonCheck(id, checkbox) {

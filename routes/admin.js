@@ -281,8 +281,18 @@ router.get("/monitors/:id", async (req, res) => {
     const db = getDB();
     const monitor = await db.getMonitor(req.params.id);
     if (!monitor) return res.status(404).json({ error: "Monitor not found" });
-    const history = await db.getMonitorHistory(monitor.id, 60);
-    res.json({ ...monitor, history });
+    const [history, owner] = await Promise.all([
+      db.getMonitorHistory(monitor.id, 60),
+      db.getUserById(monitor.user_id).catch(() => null),
+    ]);
+    res.json({
+      ...monitor,
+      history,
+      user_name: owner?.name || null,
+      user_username: owner?.username || null,
+      user_email: owner?.email || null,
+      user_whatsapp: owner?.whatsapp || null,
+    });
   } catch {
     res.status(500).json({ error: "Failed to load monitor" });
   }

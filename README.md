@@ -38,6 +38,7 @@
 | Mobile-Responsive | Hamburger nav, mobile sidebar, full footer on all pages |
 | Monitor Limit | Per-user monitor quota with admin-configurable limits |
 | Bulk Actions | Select-all + bulk operations on monitors, users, and messages |
+| Pagination | 15 monitors per page on user and admin monitor lists, with smart page controls |
 
 </details>
 
@@ -454,7 +455,7 @@ Accessible at `/admin/` — requires Super Admin privileges.
 |---|---|---|
 | Dashboard | `/admin/` | View platform-wide stats (users, monitors, up/down counts) |
 | Users | `/admin/users/` | Search, view, edit, suspend, promote, demote, or delete users; set per-user monitor limits; bulk-select to verify, enable, disable, or delete multiple users at once |
-| Monitors | `/admin/monitors/` | View and manage all monitors across every account; bulk-select to pause, activate, set ping interval, or delete multiple monitors at once |
+| Monitors | `/admin/monitors/` | View and manage all monitors across every account (15 per page with pagination); bulk-select to pause, activate, set ping interval, or delete multiple monitors at once |
 | Messages | `/admin/messages/` | Read contact form submissions, mark as read, or bulk-delete |
 
 </details>
