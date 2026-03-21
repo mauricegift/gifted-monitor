@@ -98,6 +98,7 @@ router.put("/users/:id", async (req, res) => {
       is_admin,
       is_disabled,
       password,
+      monitor_limit,
     } = req.body;
     const updates = {};
 
@@ -158,11 +159,64 @@ router.put("/users/:id", async (req, res) => {
       updates.password_hash = await hashPassword(password);
     }
 
+    if (monitor_limit !== undefined) {
+      const lim = parseInt(monitor_limit);
+      if (isNaN(lim) || lim < 1 || lim > 10000)
+        return res.status(400).json({ error: "Monitor limit must be between 1 and 10,000" });
+      updates.monitor_limit = lim;
+    }
+
     const user = await db.updateUser(targetId, updates);
     const { password_hash, ...safe } = user;
     res.json(safe);
   } catch {
     res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
+// ─── Bulk user actions ─────────────────────────────────────────────
+router.post("/users/bulk", async (req, res) => {
+  try {
+    const db = getDB();
+    const { action, ids, password } = req.body;
+    if (!action || !Array.isArray(ids) || ids.length === 0)
+      return res.status(400).json({ error: "action and ids are required" });
+
+    const selfId = String(req.userId);
+    const actorIsSuperAdmin = !!req.isSuperAdmin;
+
+    if (action === "delete") {
+      if (!password) return res.status(400).json({ error: "Password is required" });
+      const self = await db.getUserById(selfId);
+      if (!self || !(await comparePassword(password, self.password_hash)))
+        return res.status(400).json({ error: "Incorrect password" });
+    }
+
+    let success = 0, skipped = 0;
+    for (const id of ids) {
+      const sid = String(id);
+      if (sid === selfId) { skipped++; continue; }
+      try {
+        const target = await db.getUserById(sid);
+        if (!target || target.is_superadmin) { skipped++; continue; }
+        if (target.is_admin && !actorIsSuperAdmin) { skipped++; continue; }
+        if (action === "verify") {
+          await db.updateUser(sid, { is_verified: true });
+        } else if (action === "disable") {
+          await db.updateUser(sid, { is_disabled: true });
+        } else if (action === "enable") {
+          await db.updateUser(sid, { is_disabled: false });
+        } else if (action === "delete") {
+          await db.deleteUser(sid);
+        } else {
+          skipped++; continue;
+        }
+        success++;
+      } catch { skipped++; }
+    }
+    res.json({ success, skipped });
+  } catch {
+    res.status(500).json({ error: "Bulk action failed" });
   }
 });
 
@@ -254,6 +308,46 @@ router.put("/monitors/:id", async (req, res) => {
   }
 });
 
+// ─── Bulk monitor actions ───────────────────────────────────────────
+router.post("/monitors/bulk", async (req, res) => {
+  try {
+    const db = getDB();
+    const { action, ids, password, intervalMins } = req.body;
+    if (!action || !Array.isArray(ids) || ids.length === 0)
+      return res.status(400).json({ error: "action and ids are required" });
+
+    if (action === "delete") {
+      if (!password) return res.status(400).json({ error: "Password is required" });
+      const self = await db.getUserById(req.userId);
+      if (!self || !(await comparePassword(password, self.password_hash)))
+        return res.status(400).json({ error: "Incorrect password" });
+    }
+
+    let success = 0, skipped = 0;
+    for (const id of ids) {
+      try {
+        if (action === "pause") {
+          await db.updateMonitor(String(id), { is_active: false });
+        } else if (action === "activate") {
+          await db.updateMonitor(String(id), { is_active: true });
+        } else if (action === "interval") {
+          const mins = parseInt(intervalMins);
+          if (!mins || mins < 1) { skipped++; continue; }
+          await db.updateMonitor(String(id), { interval_mins: mins });
+        } else if (action === "delete") {
+          await db.deleteMonitor(String(id));
+        } else {
+          skipped++; continue;
+        }
+        success++;
+      } catch { skipped++; }
+    }
+    res.json({ success, skipped });
+  } catch {
+    res.status(500).json({ error: "Bulk action failed" });
+  }
+});
+
 router.delete("/monitors/:id", async (req, res) => {
   try {
     const db = getDB();
@@ -297,6 +391,29 @@ router.patch("/contact/:id/read", async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: "Failed to update message" });
+  }
+});
+
+router.post("/contact/bulk", async (req, res) => {
+  try {
+    const db = getDB();
+    const { action, ids } = req.body;
+    if (!action || !Array.isArray(ids) || ids.length === 0)
+      return res.status(400).json({ error: "action and ids are required" });
+    let success = 0, skipped = 0;
+    for (const id of ids) {
+      try {
+        if (action === "read") {
+          await db.markContactRead(String(id));
+        } else if (action === "delete") {
+          await db.deleteContactMessage(String(id));
+        } else { skipped++; continue; }
+        success++;
+      } catch { skipped++; }
+    }
+    res.json({ success, skipped });
+  } catch {
+    res.status(500).json({ error: "Bulk action failed" });
   }
 });
 

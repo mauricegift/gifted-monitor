@@ -49,9 +49,7 @@
   </header>
 
   <main class="flex-1">
-    <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8" id="main-content">
-      
-    </div>
+    <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8 pb-28" id="main-content"></div>
   </main>
 
   <footer class="border-t border-[#1e2740] bg-[#0d1117] px-6 py-2.5 flex-shrink-0 rounded-t-xl">
@@ -60,6 +58,29 @@
       <p class="text-xs text-gray-500">Crafted with <span class="heart-beat">♥</span> by <a href="https://me.giftedtech.co.ke" target="_blank" rel="noopener" class="text-blue-400 font-bold hover:text-blue-300 transition-colors">Gifted Tech</a></p>
     </div>
   </footer>
+</div>
+
+<!-- Bulk action bar (fixed bottom) -->
+<div id="user-bulk-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:#0d1117;border-top:1px solid rgba(74,222,128,.25);padding:12px 16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.5)">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block"></span>
+    <span id="user-bulk-count" style="font-size:13px;font-weight:600;color:#e2e8f0"></span>
+    <button onclick="clearUserSelection()" style="font-size:11px;color:#6b7280;background:rgba(255,255,255,.06);border:none;border-radius:8px;padding:3px 10px;cursor:pointer">✕ Clear</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <button onclick="bulkVerify()" style="font-size:12px;font-weight:600;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(74,222,128,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(34,197,94,.22)'" onmouseout="this.style.background='rgba(34,197,94,.12)'">
+      <i class="fa-solid fa-circle-check" style="margin-right:5px"></i>Verify
+    </button>
+    <button onclick="bulkEnable()" style="font-size:12px;font-weight:600;background:rgba(34,211,238,.1);color:#22d3ee;border:1px solid rgba(34,211,238,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(34,211,238,.2)'" onmouseout="this.style.background='rgba(34,211,238,.1)'">
+      <i class="fa-solid fa-lock-open" style="margin-right:5px"></i>Enable
+    </button>
+    <button onclick="bulkDisable()" style="font-size:12px;font-weight:600;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(251,191,36,.2)'" onmouseout="this.style.background='rgba(251,191,36,.1)'">
+      <i class="fa-solid fa-ban" style="margin-right:5px"></i>Disable
+    </button>
+    <button onclick="openBulkDeleteUsers()" style="font-size:12px;font-weight:600;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
+      <i class="fa-solid fa-trash" style="margin-right:5px"></i>Delete
+    </button>
+  </div>
 </div>
 
 <!-- Edit user modal -->
@@ -77,6 +98,12 @@
       <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Email</label><input id="u-email" type="email" class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 outline-none"/></div>
       <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">WhatsApp</label><input id="u-whatsapp" type="tel" class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 outline-none"/></div>
       <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">New Password</label><input id="u-password" type="password" placeholder="Leave blank to keep current" class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-green-500/50 outline-none"/></div>
+      <div id="u-monitor-limit-wrap">
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Monitor Limit <span id="u-monitor-usage" class="normal-case font-normal text-gray-600 ml-1"></span></label>
+        <input id="u-monitor-limit" type="number" min="1" max="10000" placeholder="20"
+          class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-blue-500/50 outline-none transition-colors"/>
+        <p class="mt-1 text-[11px] text-gray-600">Default is 20. Admins and superadmins have no limit.</p>
+      </div>
       <div id="toggles-row" class="flex gap-6 py-1 flex-wrap">
         <label class="flex items-center gap-3 cursor-pointer" onclick="toggleUA()">
           <div id="u-admin-track" class="gm-toggle w-10 h-6 bg-[#1e2740] rounded-full relative">
@@ -116,17 +143,63 @@
   </div>
 </div>
 
+<!-- Delete single user modal -->
+<div id="del-user-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] items-center justify-center p-4">
+  <div class="bg-[#0d1117] border border-[#1e2740] rounded-2xl w-full max-w-sm shadow-2xl">
+    <div class="flex items-center justify-between p-5 border-b border-[#1e2740]">
+      <h2 class="text-base font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Delete User</h2>
+      <button onclick="closeModal('del-user-modal')" class="gm-close-btn text-gray-500 hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">✕</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <p class="text-sm text-gray-400">You are about to permanently delete <span class="font-semibold text-gray-100" id="del-user-name"></span> and all their monitors and history. This cannot be undone.</p>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Enter your password to confirm</label>
+        <input id="del-user-pw" type="password" placeholder="Your current password"
+          onkeydown="if(event.key==='Enter')confirmDelUser()"
+          class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-red-500/50 outline-none transition-colors"/>
+        <p id="del-user-err" class="text-xs text-red-400 mt-1.5 min-h-[16px]"></p>
+      </div>
+      <button id="del-user-btn" onclick="confirmDelUser()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl py-3 text-sm transition-colors shadow-lg shadow-red-600/20">Delete User</button>
+      <button onclick="closeModal('del-user-modal')" class="w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm hover:bg-white/5 transition-colors">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk delete users modal -->
+<div id="bulk-del-users-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] items-center justify-center p-4">
+  <div class="bg-[#0d1117] border border-[#1e2740] rounded-2xl w-full max-w-sm shadow-2xl">
+    <div class="flex items-center justify-between p-5 border-b border-[#1e2740]">
+      <h2 class="text-base font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Bulk Delete Users</h2>
+      <button onclick="closeModal('bulk-del-users-modal')" class="gm-close-btn text-gray-500 hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">✕</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <p class="text-sm text-gray-400">Permanently delete <span id="bulk-del-users-count" class="font-semibold text-gray-100"></span>? All their monitors and history will be deleted. Superadmin and your own account will be skipped. This cannot be undone.</p>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Enter your password to confirm</label>
+        <input id="bulk-del-users-pw" type="password" placeholder="Your current password"
+          onkeydown="if(event.key==='Enter')confirmBulkDeleteUsers()"
+          class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-red-500/50 outline-none transition-colors"/>
+        <p id="bulk-del-users-err" class="text-xs text-red-400 mt-1.5 min-h-[16px]"></p>
+      </div>
+      <button id="bulk-del-users-btn" onclick="confirmBulkDeleteUsers()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl py-3 text-sm transition-colors shadow-lg shadow-red-600/20">Delete Selected Users</button>
+      <button onclick="closeModal('bulk-del-users-modal')" class="w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm hover:bg-white/5 transition-colors">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <style>
 .gm-toggle.on { background: #16a34a; }
 .gm-toggle.on .gm-toggle-thumb { transform: translateX(16px); background: #fff; }
 .gm-toggle.on-red { background: #dc2626; }
 .gm-toggle.on-red .gm-toggle-thumb { transform: translateX(16px); background: #fff; }
+.u-row-cb { width:16px;height:16px;accent-color:#4ade80;cursor:pointer;flex-shrink:0 }
 </style>
 
 <script src="/assets/app.js"></script>
 <script>
 let _user = null, users = [], editId = null, eAdmin = false, eVerified = false, eDisabled = false;
 let currentPage = 1, totalUsers = 0, searchQuery = '', _timezone = 'Africa/Nairobi';
+let selectedUsers = new Set();
 const PAGE_SIZE = 10;
 
 async function init() {
@@ -147,6 +220,8 @@ async function init() {
 
 async function loadUsers(page = 1) {
   currentPage = page;
+  selectedUsers.clear();
+  updateBulkBar();
   try {
     const qs = new URLSearchParams({ page, limit: PAGE_SIZE, search: searchQuery });
     const result = await api('GET', `/api/admin/users?${qs}`);
@@ -191,6 +266,9 @@ function renderUsers() {
         : `<div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead><tr class="border-b border-[#1e2740] bg-white/[0.02]">
+              <th class="px-4 py-3.5 w-10">
+                <input type="checkbox" id="u-select-all" class="u-row-cb" onchange="toggleSelectAllUsers()" title="Select all"/>
+              </th>
               <th class="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name / Username</th>
               <th class="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Email</th>
               <th class="text-left px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -203,13 +281,19 @@ function renderUsers() {
                 const uInit = (u.name || u.username || '?').charAt(0).toUpperCase();
                 const isProtected = u.is_superadmin && !_user.is_superadmin;
                 const isSelf = String(u.id) === String(_user.id);
+                const isSelectable = !u.is_superadmin && !isSelf;
                 const roleBadge = u.is_superadmin
                   ? '<span class="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-star text-[8px]"></i>Superadmin</span>'
                   : u.is_admin
                   ? '<span class="inline-flex items-center gap-1 text-[10px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-crown text-[8px]"></i>Admin</span>'
                   : '<span class="inline-flex items-center gap-1 text-[10px] bg-gray-500/10 text-gray-400 border border-gray-500/20 px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-user text-[8px]"></i>User</span>';
                 return `
-                <tr class="border-b border-[#1e2740]/50 hover:bg-white/[0.02] transition-colors animate-fade-in" style="animation-delay:${ui*55}ms">
+                <tr class="border-b border-[#1e2740]/50 hover:bg-white/[0.02] transition-colors animate-fade-in u-row" style="animation-delay:${ui*55}ms" data-uid="${u.id}">
+                  <td class="px-4 py-3.5">
+                    ${isSelectable
+                      ? `<input type="checkbox" class="u-row-cb" data-uid="${u.id}" onchange="toggleUserCheck(${u.id},this)" ${selectedUsers.has(u.id)?'checked':''}/>`
+                      : `<span class="inline-block w-4 h-4" title="${u.is_superadmin?'Superadmin protected':'Your account'}"></span>`}
+                  </td>
                   <td class="px-4 py-3.5">
                     <div class="flex items-center gap-3">
                       <div class="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0 overflow-hidden">
@@ -277,8 +361,112 @@ function onSearch(val) {
 }
 function clearSearch() { searchQuery = ''; loadUsers(1); }
 
+// ── Bulk selection ───────────────────────────────────────────────────
+function toggleUserCheck(id, checkbox) {
+  if (checkbox.checked) selectedUsers.add(id);
+  else selectedUsers.delete(id);
+  updateBulkBar();
+  const allCbs = document.querySelectorAll('.u-row-cb[data-uid]');
+  const allSel = document.getElementById('u-select-all');
+  if (allSel) {
+    allSel.indeterminate = selectedUsers.size > 0 && selectedUsers.size < allCbs.length;
+    allSel.checked = allCbs.length > 0 && selectedUsers.size === allCbs.length;
+  }
+}
+
+function toggleSelectAllUsers() {
+  const allSel = document.getElementById('u-select-all');
+  const allCbs = document.querySelectorAll('.u-row-cb[data-uid]');
+  const shouldSelect = allSel.checked;
+  allCbs.forEach(cb => {
+    cb.checked = shouldSelect;
+    const id = parseInt(cb.dataset.uid);
+    if (shouldSelect) selectedUsers.add(id);
+    else selectedUsers.delete(id);
+  });
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('user-bulk-bar');
+  const countEl = document.getElementById('user-bulk-count');
+  if (!bar) return;
+  if (selectedUsers.size > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `${selectedUsers.size} user${selectedUsers.size !== 1 ? 's' : ''} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearUserSelection() {
+  selectedUsers.clear();
+  document.querySelectorAll('.u-row-cb').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+  updateBulkBar();
+}
+
+// ── Bulk actions ────────────────────────────────────────────────────
+async function bulkVerify() {
+  if (!selectedUsers.size) return;
+  const ids = Array.from(selectedUsers);
+  try {
+    const res = await api('POST', '/api/admin/users/bulk', { action: 'verify', ids });
+    toast.success(`Verified ${res.success} user${res.success!==1?'s':''}${res.skipped?' ('+res.skipped+' skipped)':''}`);
+    loadUsers(currentPage);
+  } catch (err) { toast.error(err.message); }
+}
+
+async function bulkDisable() {
+  if (!selectedUsers.size) return;
+  const ids = Array.from(selectedUsers);
+  try {
+    const res = await api('POST', '/api/admin/users/bulk', { action: 'disable', ids });
+    toast.success(`Disabled ${res.success} user${res.success!==1?'s':''}${res.skipped?' ('+res.skipped+' skipped)':''}`);
+    loadUsers(currentPage);
+  } catch (err) { toast.error(err.message); }
+}
+
+async function bulkEnable() {
+  if (!selectedUsers.size) return;
+  const ids = Array.from(selectedUsers);
+  try {
+    const res = await api('POST', '/api/admin/users/bulk', { action: 'enable', ids });
+    toast.success(`Enabled ${res.success} user${res.success!==1?'s':''}${res.skipped?' ('+res.skipped+' skipped)':''}`);
+    loadUsers(currentPage);
+  } catch (err) { toast.error(err.message); }
+}
+
+function openBulkDeleteUsers() {
+  if (!selectedUsers.size) return;
+  const n = selectedUsers.size;
+  document.getElementById('bulk-del-users-count').textContent = `${n} user${n!==1?'s':''}`;
+  document.getElementById('bulk-del-users-pw').value = '';
+  document.getElementById('bulk-del-users-err').textContent = '';
+  openModal('bulk-del-users-modal');
+  setTimeout(() => document.getElementById('bulk-del-users-pw').focus(), 120);
+}
+
+async function confirmBulkDeleteUsers() {
+  const pw = document.getElementById('bulk-del-users-pw').value;
+  const errEl = document.getElementById('bulk-del-users-err');
+  if (!pw) { errEl.textContent = 'Please enter your password.'; return; }
+  errEl.textContent = '';
+  const btn = document.getElementById('bulk-del-users-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try {
+    const ids = Array.from(selectedUsers);
+    const res = await api('POST', '/api/admin/users/bulk', { action: 'delete', ids, password: pw });
+    closeModal('bulk-del-users-modal');
+    toast.success(`Deleted ${res.success} user${res.success!==1?'s':''}${res.skipped?' ('+res.skipped+' skipped)':''}`);
+    loadUsers(currentPage);
+  } catch (err) {
+    errEl.textContent = err.message || 'Incorrect password.';
+    btn.disabled = false; btn.textContent = 'Delete Selected Users';
+  }
+}
+
 // ── Portal dropdown ─────────────────────────────────────────────────
-let _portalTarget = null; // which uid the portal is showing for
+let _portalTarget = null;
 
 function getPortal() {
   let p = document.getElementById('ua-portal');
@@ -304,13 +492,11 @@ function toggleUserMenu(btn) {
   const isSelf = btn.dataset.self === '1';
   const portal = getPortal();
 
-  // If already open for same button — close it
   if (_portalTarget === uid && portal.style.display !== 'none') {
     closePortal();
     return;
   }
 
-  // Build menu items (uid cast to number so strict === works in find())
   const uidNum = Number(uid);
   portal.innerHTML = `
     <button data-name="${escHtml(uname)}" onclick="closePortal();viewMonitors(${uidNum},this.dataset.name)">
@@ -325,21 +511,19 @@ function toggleUserMenu(btn) {
     </button>` : ''}
   `;
 
-  // Position using fixed coords from the gear button
   const rect = btn.getBoundingClientRect();
   portal.style.top   = (rect.bottom + 4) + 'px';
   portal.style.right = (window.innerWidth - rect.right) + 'px';
   portal.style.left  = 'auto';
-  // Force animation restart
   portal.style.animation = 'none';
   portal.style.display = 'block';
-  portal.offsetHeight; // trigger reflow
+  portal.offsetHeight;
   portal.style.animation = '';
   _portalTarget = uid;
 }
 
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('.ua-gear-btn') && !e.target.closest('#ua-portal')) {
+  if (!e.target.closest('.ua-gear-btn') && !e.target.closest('#ua-portal') && !e.target.closest('.u-row-cb')) {
     closePortal();
   }
 });
@@ -372,9 +556,19 @@ function openEdit(id) {
   document.getElementById('u-whatsapp').value = u.whatsapp;
   document.getElementById('u-password').value = '';
 
+  const limitInput = document.getElementById('u-monitor-limit');
+  const usageEl    = document.getElementById('u-monitor-usage');
+  const limitWrap  = document.getElementById('u-monitor-limit-wrap');
+  if (u.is_admin || u.is_superadmin) {
+    if (limitWrap) limitWrap.style.display = 'none';
+  } else {
+    if (limitWrap) limitWrap.style.display = '';
+    if (limitInput) limitInput.value = u.monitor_limit ?? 20;
+    if (usageEl) usageEl.textContent = `— currently using ${u.monitor_count ?? 0} of ${u.monitor_limit ?? 20}`;
+  }
+
   const isSelf = String(u.id) === String(_user.id);
 
-  // Admin toggle: only superadmin can change; disable for superadmin target and self
   const adminToggle = document.getElementById('u-admin-track');
   const adminLabel  = adminToggle?.closest('label');
   const canToggleAdmin = _user.is_superadmin && !u.is_superadmin && !isSelf;
@@ -384,7 +578,6 @@ function openEdit(id) {
 
   document.getElementById('u-verified-track').classList.toggle('on', eVerified);
 
-  // Disabled toggle: superadmin can't be disabled; self can't be disabled; only superadmin can disable admins
   const disableWrap = document.getElementById('disable-toggle-wrap');
   const canToggleDisable = !u.is_superadmin && !isSelf && (_user.is_superadmin || !u.is_admin);
   if (disableWrap) { disableWrap.style.opacity = canToggleDisable ? '1' : '0.4'; disableWrap.style.pointerEvents = canToggleDisable ? '' : 'none'; }
@@ -424,6 +617,11 @@ async function saveUser() {
   };
   const pw = document.getElementById('u-password').value;
   if (pw) payload.password = pw;
+  const limitWrap = document.getElementById('u-monitor-limit-wrap');
+  if (limitWrap && limitWrap.style.display !== 'none') {
+    const lv = document.getElementById('u-monitor-limit').value;
+    if (lv !== '') payload.monitor_limit = parseInt(lv);
+  }
   setBtnLoading('user-save-btn', true);
   try {
     await api('PUT', `/api/admin/users/${editId}`, payload);
@@ -461,27 +659,5 @@ async function confirmDelUser() {
 
 init();
 </script>
-
-<!-- Delete user confirmation modal -->
-<div id="del-user-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] items-center justify-center p-4">
-  <div class="bg-[#0d1117] border border-[#1e2740] rounded-2xl w-full max-w-sm shadow-2xl">
-    <div class="flex items-center justify-between p-5 border-b border-[#1e2740]">
-      <h2 class="text-base font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Delete User</h2>
-      <button onclick="closeModal('del-user-modal')" class="gm-close-btn text-gray-500 hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">✕</button>
-    </div>
-    <div class="p-5 space-y-4">
-      <p class="text-sm text-gray-400">You are about to permanently delete <span class="font-semibold text-gray-100" id="del-user-name"></span> and all their monitors and history. This cannot be undone.</p>
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Enter your password to confirm</label>
-        <input id="del-user-pw" type="password" placeholder="Your current password"
-          onkeydown="if(event.key==='Enter')confirmDelUser()"
-          class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-red-500/50 outline-none transition-colors"/>
-        <p id="del-user-err" class="text-xs text-red-400 mt-1.5 min-h-[16px]"></p>
-      </div>
-      <button id="del-user-btn" onclick="confirmDelUser()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl py-3 text-sm transition-colors shadow-lg shadow-red-600/20">Delete User</button>
-      <button onclick="closeModal('del-user-modal')" class="w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm hover:bg-white/5 transition-colors">Cancel</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>

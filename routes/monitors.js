@@ -51,6 +51,18 @@ router.post('/', async (req, res) => {
 
     const notifyDown = req.body.notify_down !== false && req.body.notify_down !== 'false';
     const notifyUp   = req.body.notify_up   !== false && req.body.notify_up   !== 'false';
+
+    // Enforce monitor limit for non-admin users
+    if (!req.isAdmin && !req.isSuperAdmin) {
+      const currentCount = await db.getUserMonitorCount(req.userId);
+      const limit = user.monitor_limit ?? 20;
+      if (currentCount >= limit) {
+        return res.status(403).json({
+          error: `Monitor limit reached (${limit}). Contact an administrator to increase your limit.`
+        });
+      }
+    }
+
     const monitor = await db.createMonitor(req.userId, { name, url, path, method, body, intervalMins, notifyDown, notifyUp });
     const displayUrl = url + (path || '');
     await wa.sendMonitorCreated(user.whatsapp, user.name, name, displayUrl, intervalMins);
@@ -90,6 +102,39 @@ router.put('/:id', async (req, res) => {
 
     res.json(await db.updateMonitor(req.params.id, updates));
   } catch { res.status(500).json({ error: 'Failed to update monitor' }); }
+});
+
+router.post('/bulk', async (req, res) => {
+  try {
+    const db = getDB();
+    const { action, ids, password } = req.body;
+    if (!action || !Array.isArray(ids) || ids.length === 0)
+      return res.status(400).json({ error: 'action and ids are required' });
+
+    if (action === 'delete') {
+      if (!password) return res.status(400).json({ error: 'Password is required' });
+      const user = await db.getUserById(req.userId);
+      if (!user || !(await comparePassword(password, user.password_hash)))
+        return res.status(400).json({ error: 'Incorrect password' });
+    }
+
+    let success = 0, skipped = 0;
+    for (const id of ids) {
+      try {
+        const monitor = await db.getMonitor(String(id));
+        if (!monitor || String(monitor.user_id) !== String(req.userId)) { skipped++; continue; }
+        if (action === 'pause') {
+          await db.updateMonitor(String(id), { is_active: false });
+        } else if (action === 'activate') {
+          await db.updateMonitor(String(id), { is_active: true });
+        } else if (action === 'delete') {
+          await db.deleteMonitor(String(id));
+        } else { skipped++; continue; }
+        success++;
+      } catch { skipped++; }
+    }
+    res.json({ success, skipped });
+  } catch { res.status(500).json({ error: 'Bulk action failed' }); }
 });
 
 router.delete('/:id', async (req, res) => {

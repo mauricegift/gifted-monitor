@@ -50,7 +50,7 @@
   </header>
 
   <main class="flex-1">
-    <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8" id="main-content"></div>
+    <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8 pb-28" id="main-content"></div>
   </main>
 
   <footer class="border-t border-[#1e2740] bg-[#0d1117] px-6 py-2.5 flex-shrink-0 rounded-t-xl">
@@ -59,6 +59,23 @@
       <p class="text-xs text-gray-500">Crafted with <span class="heart-beat">♥</span> by <a href="https://me.giftedtech.co.ke" target="_blank" rel="noopener" class="text-blue-400 font-bold hover:text-blue-300 transition-colors">Gifted Tech</a></p>
     </div>
   </footer>
+</div>
+
+<!-- Bulk action bar (fixed bottom) -->
+<div id="msg-bulk-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:#0d1117;border-top:1px solid rgba(74,222,128,.25);padding:12px 16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.5)">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block"></span>
+    <span id="msg-bulk-count" style="font-size:13px;font-weight:600;color:#e2e8f0"></span>
+    <button onclick="clearMsgSel()" style="font-size:11px;color:#6b7280;background:rgba(255,255,255,.06);border:none;border-radius:8px;padding:3px 10px;cursor:pointer">✕ Clear</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <button onclick="bulkMarkRead()" style="font-size:12px;font-weight:600;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(251,191,36,.2)'" onmouseout="this.style.background='rgba(251,191,36,.1)'">
+      <i class="fa-solid fa-envelope-open" style="margin-right:5px"></i>Mark as Read
+    </button>
+    <button onclick="bulkDeleteMsgs()" style="font-size:12px;font-weight:600;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
+      <i class="fa-solid fa-trash" style="margin-right:5px"></i>Delete
+    </button>
+  </div>
 </div>
 
 <!-- Message detail modal -->
@@ -70,10 +87,14 @@
   </div>
 </div>
 
+<style>
+.msg-cb { width:16px;height:16px;accent-color:#4ade80;cursor:pointer;flex-shrink:0 }
+</style>
+
 <script src="/assets/app.js"></script>
 <script>
-let _page = 1;
-let _total = 0;
+let _page = 1, _total = 0;
+let selectedMsgs = new Set();
 const PAGE_SIZE = 10;
 
 async function init() {
@@ -90,6 +111,8 @@ async function init() {
 
 async function loadMessages(page) {
   _page = page;
+  selectedMsgs.clear();
+  updateMsgBulkBar();
   const mc = document.getElementById('main-content');
   try {
     const data = await api('GET', `/api/admin/contact?page=${page}`);
@@ -111,24 +134,37 @@ async function loadMessages(page) {
           <div class="text-sm">Contact form submissions will appear here</div>
         </div>
       ` : `
+        <!-- Select-all row -->
+        <div class="flex items-center gap-3 mb-3 px-1 animate-fade-up">
+          <label class="flex items-center gap-2 cursor-pointer select-none group" onclick="event.stopPropagation()">
+            <input type="checkbox" id="msg-select-all" class="msg-cb" onchange="toggleSelectAllMsgs()"/>
+            <span class="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">Select all on this page</span>
+          </label>
+        </div>
+
         <div class="flex flex-col gap-3 mb-6">
           ${data.messages.map((m, i) => `
-            <div class="animate-fade-up" style="animation-delay:${i * 40}ms">
-              <div class="bg-[#0d1117] border ${m.is_read ? 'border-[#1e2740]' : 'border-amber-500/30'} rounded-2xl p-4 sm:p-5 hover:border-green-500/30 transition-colors cursor-pointer group"
-                onclick="openMessage(${JSON.stringify(m).replace(/"/g, '&quot;')})">
-                <div class="flex items-start gap-3">
-                  <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-content:center bg-${m.is_read ? '[#1e2740]' : 'amber-500/15'} border border-${m.is_read ? '[#2d3748]' : 'amber-500/30'} flex items-center justify-center text-sm font-bold ${m.is_read ? 'text-gray-400' : 'text-amber-400'}">
-                    ${escHtml((m.name || '?')[0].toUpperCase())}
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-2 mb-1">
-                      <span class="font-semibold text-gray-200 group-hover:text-white transition-colors">${escHtml(m.name)}</span>
-                      ${!m.is_read ? '<span class="text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">NEW</span>' : ''}
-                      <span class="text-xs text-gray-500 ml-auto flex-shrink-0">${fmtDate(m.created_at)}</span>
+            <div class="animate-fade-up" style="animation-delay:${i * 40}ms;position:relative">
+              <label class="absolute top-4 left-4 z-10 cursor-pointer" style="position:absolute;top:14px;left:14px;z-index:10" onclick="event.stopPropagation()">
+                <input type="checkbox" class="msg-cb msg-row-cb" data-mid="${m.id}" onchange="toggleMsgCheck(${m.id},this)" ${selectedMsgs.has(m.id)?'checked':''}/>
+              </label>
+              <div style="padding-left:2.25rem">
+                <div class="bg-[#0d1117] border ${m.is_read ? 'border-[#1e2740]' : 'border-amber-500/30'} rounded-2xl p-4 sm:p-5 hover:border-green-500/30 transition-colors cursor-pointer group"
+                  onclick="openMessage(${JSON.stringify(m).replace(/"/g, '&quot;')})">
+                  <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-${m.is_read ? '[#1e2740]' : 'amber-500/15'} border border-${m.is_read ? '[#2d3748]' : 'amber-500/30'} text-sm font-bold ${m.is_read ? 'text-gray-400' : 'text-amber-400'}">
+                      ${escHtml((m.name || '?')[0].toUpperCase())}
                     </div>
-                    <div class="text-xs text-gray-500 mb-1.5">${escHtml(m.email)}${m.whatsapp ? ' · ' + escHtml(m.whatsapp) : ''}</div>
-                    <div class="text-sm font-semibold text-gray-300 mb-1 truncate">${escHtml(m.subject)}</div>
-                    <div class="text-sm text-gray-500 line-clamp-2">${escHtml(m.message)}</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="font-semibold text-gray-200 group-hover:text-white transition-colors">${escHtml(m.name)}</span>
+                        ${!m.is_read ? '<span class="text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">NEW</span>' : ''}
+                        <span class="text-xs text-gray-500 ml-auto flex-shrink-0">${fmtDate(m.created_at)}</span>
+                      </div>
+                      <div class="text-xs text-gray-500 mb-1.5">${escHtml(m.email)}${m.whatsapp ? ' · ' + escHtml(m.whatsapp) : ''}</div>
+                      <div class="text-sm font-semibold text-gray-300 mb-1 truncate">${escHtml(m.subject)}</div>
+                      <div class="text-sm text-gray-500 line-clamp-2">${escHtml(m.message)}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -173,6 +209,72 @@ function fmtDate(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
 }
 
+// ── Bulk selection ─────────────────────────────────────────────────
+function toggleMsgCheck(id, checkbox) {
+  if (checkbox.checked) selectedMsgs.add(id);
+  else selectedMsgs.delete(id);
+  updateMsgBulkBar();
+  const allCbs = document.querySelectorAll('.msg-row-cb');
+  const allSel = document.getElementById('msg-select-all');
+  if (allSel) {
+    allSel.indeterminate = selectedMsgs.size > 0 && selectedMsgs.size < allCbs.length;
+    allSel.checked = allCbs.length > 0 && selectedMsgs.size === allCbs.length;
+  }
+}
+
+function toggleSelectAllMsgs() {
+  const allSel = document.getElementById('msg-select-all');
+  const allCbs = document.querySelectorAll('.msg-row-cb');
+  const shouldSelect = allSel.checked;
+  allCbs.forEach(cb => {
+    cb.checked = shouldSelect;
+    const id = parseInt(cb.dataset.mid);
+    if (shouldSelect) selectedMsgs.add(id);
+    else selectedMsgs.delete(id);
+  });
+  updateMsgBulkBar();
+}
+
+function updateMsgBulkBar() {
+  const bar = document.getElementById('msg-bulk-bar');
+  const countEl = document.getElementById('msg-bulk-count');
+  if (!bar) return;
+  if (selectedMsgs.size > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `${selectedMsgs.size} message${selectedMsgs.size !== 1 ? 's' : ''} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearMsgSel() {
+  selectedMsgs.clear();
+  document.querySelectorAll('.msg-cb').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+  updateMsgBulkBar();
+}
+
+// ── Bulk actions ────────────────────────────────────────────────────
+async function bulkMarkRead() {
+  if (!selectedMsgs.size) return;
+  try {
+    const res = await api('POST', '/api/admin/contact/bulk', { action: 'read', ids: Array.from(selectedMsgs) });
+    toast.success(`Marked ${res.success} message${res.success!==1?'s':''} as read`);
+    loadMessages(_page);
+  } catch (err) { toast.error(err.message); }
+}
+
+async function bulkDeleteMsgs() {
+  if (!selectedMsgs.size) return;
+  const n = selectedMsgs.size;
+  if (!confirm(`Delete ${n} message${n!==1?'s':''}? This cannot be undone.`)) return;
+  try {
+    const res = await api('POST', '/api/admin/contact/bulk', { action: 'delete', ids: Array.from(selectedMsgs) });
+    toast.success(`Deleted ${res.success} message${res.success!==1?'s':''}`);
+    loadMessages(_page);
+  } catch (err) { toast.error(err.message); }
+}
+
+// ── Single actions ─────────────────────────────────────────────────
 function openMessage(m) {
   document.getElementById('msg-modal-body').innerHTML = `
     <div class="flex items-center gap-3 mb-4">
@@ -223,7 +325,7 @@ async function deleteMsg(id) {
   if (!confirm('Delete this message? This cannot be undone.')) return;
   await api('DELETE', `/api/admin/contact/${id}`);
   closeModal('msg-modal');
-  showToast('Message deleted');
+  toast.success('Message deleted');
   loadMessages(_page);
 }
 

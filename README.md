@@ -36,6 +36,8 @@
 | Contact Form | Public contact page saves messages to the database |
 | Multi-DB Support | PostgreSQL, MySQL, or MongoDB adapters |
 | Mobile-Responsive | Hamburger nav, mobile sidebar, full footer on all pages |
+| Monitor Limit | Per-user monitor quota with admin-configurable limits |
+| Bulk Actions | Select-all + bulk operations on monitors, users, and messages |
 
 </details>
 
@@ -89,7 +91,7 @@ gifted-monitor/
 │   ├── admin.js              # /api/admin/* endpoints
 │   └── public.js             # /api/contact, /api/status
 └── public/
-    ├── index.html            # Landing page
+    ├── index.html            # Dashboard (monitor usage bar, warnings)
     ├── about/                # About page
     ├── contact/              # Contact form page
     ├── privacy/              # Privacy policy
@@ -100,7 +102,7 @@ gifted-monitor/
     │   ├── forgot/
     │   ├── reset/
     │   └── verify/
-    ├── monitors/             # User monitor dashboard + detail view
+    ├── monitors/             # User monitor list + detail view (limit display)
     ├── profile/              # User profile & settings
     ├── admin/                # Admin panel (dashboard, users, monitors, messages)
     └── assets/
@@ -172,7 +174,7 @@ All tables are created automatically on first startup — no manual migrations n
 
 ```sql
 users (id, username, email, whatsapp, password_hash, is_verified,
-       is_admin, is_superadmin, is_disabled, avatar, created_at)
+       is_admin, is_superadmin, is_disabled, avatar, monitor_limit, created_at)
 
 monitors (id, user_id, name, url, method, body, interval_mins,
           last_status, last_checked_at, uptime_pct,
@@ -184,6 +186,8 @@ otp_codes (id, email, code, type, expires_at, used, created_at)
 
 contact_messages (id, name, email, whatsapp, subject, message, is_read, created_at)
 ```
+
+> `users.monitor_limit` defaults to `20` for regular users. It is `NULL` for admins and superadmins (no limit applied).
 
 To switch databases, change `DATABASE_URL` to the appropriate connection string. The adapter is chosen automatically:
 - `postgresql://` → PostgreSQL adapter
@@ -347,8 +351,8 @@ Users can disable all notifications globally in their profile settings, or toggl
 | Role | How Assigned | Capabilities |
 |---|---|---|
 | **Guest** | Not logged in | View public pages, submit contact form |
-| **User** | Default on signup | Manage own monitors and profile settings |
-| **Admin** | Promoted by Super Admin | View all users/monitors, manage contact messages |
+| **User** | Default on signup | Manage own monitors (up to their limit) and profile settings |
+| **Admin** | Promoted by Super Admin | View all users/monitors, manage contact messages, set user monitor limits |
 | **Super Admin** | First user to register | All admin powers + promote/demote other admins |
 
 ### ⚠️ Important: First User Registered = Super Admin
@@ -365,7 +369,81 @@ Users can disable all notifications globally in their profile settings, or toggl
 
 ---
 
-## 12. ADMIN PANEL
+## 12. MONITOR LIMIT SYSTEM
+
+<details>
+<summary>TAP TO EXPAND</summary>
+
+Each regular user has a **monitor quota** that controls how many monitors they can create.
+
+| Aspect | Detail |
+|---|---|
+| Default limit | 20 monitors per user |
+| Admins / Super Admins | No limit (quota does not apply) |
+| Storage | `users.monitor_limit` column (integer, default 20) |
+| Enforcement | API returns HTTP 403 with a clear message when the limit is reached |
+
+**What users see:**
+
+- **Dashboard** — A progress bar shows current usage (e.g., `3 / 20`). A yellow warning appears at 80% of the limit. An orange banner appears when the limit is fully reached.
+- **Monitors page** — The subtitle shows `"X monitors — X of Y"`. The **Add Monitor** button is replaced with a disabled **Limit Reached** button when the quota is full. Warning banners appear at 80% and 100%.
+
+**What admins can do:**
+
+- In the Edit User modal (`/admin/users/`), a **Monitor Limit** field shows the current limit and live usage. Admins can type any value from 1 to 10,000 and save it instantly.
+- The field is automatically hidden when editing another admin or superadmin (limits do not apply to privileged accounts).
+
+</details>
+
+<img src='https://i.imgur.com/LyHic3i.gif'/>
+
+---
+
+## 13. BULK ACTIONS
+
+<details>
+<summary>TAP TO EXPAND</summary>
+
+Bulk selection is available across three areas of the app. Select items using checkboxes — a sticky action bar appears at the bottom of the screen with available operations.
+
+**User Monitors (`/monitors/`):**
+
+| Action | What It Does |
+|---|---|
+| Delete | Permanently deletes all selected monitors and their history (requires your password) |
+
+**Admin — Users (`/admin/users/`):**
+
+| Action | What It Does |
+|---|---|
+| Verify | Marks all selected users as verified |
+| Enable | Re-enables any selected users who were previously disabled |
+| Disable | Disables login for all selected users |
+| Delete | Permanently deletes all selected users and their monitors (requires your password) |
+
+**Admin — Monitors (`/admin/monitors/`):**
+
+| Action | What It Does |
+|---|---|
+| Pause | Sets all selected monitors to inactive (stops pinging) |
+| Activate | Resumes pinging for all selected monitors |
+| Set Interval | Applies the same ping interval to all selected monitors |
+| Delete | Permanently deletes all selected monitors and their history (requires your password) |
+
+**Admin — Messages (`/admin/messages/`):**
+
+| Action | What It Does |
+|---|---|
+| Mark Read | Marks all selected messages as read |
+| Delete | Permanently deletes all selected messages (requires your password) |
+
+</details>
+
+<img src='https://i.imgur.com/LyHic3i.gif'/>
+
+---
+
+## 14. ADMIN PANEL
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -375,9 +453,9 @@ Accessible at `/admin/` — requires Super Admin privileges.
 | Section | Path | What You Can Do |
 |---|---|---|
 | Dashboard | `/admin/` | View platform-wide stats (users, monitors, up/down counts) |
-| Users | `/admin/users/` | Search, view, edit, suspend, promote, demote, or delete users |
-| Monitors | `/admin/monitors/` | View and manage all monitors across every account |
-| Messages | `/admin/messages/` | Read contact form submissions and mark them as read |
+| Users | `/admin/users/` | Search, view, edit, suspend, promote, demote, or delete users; set per-user monitor limits; bulk-select to verify, enable, disable, or delete multiple users at once |
+| Monitors | `/admin/monitors/` | View and manage all monitors across every account; bulk-select to pause, activate, set ping interval, or delete multiple monitors at once |
+| Messages | `/admin/messages/` | Read contact form submissions, mark as read, or bulk-delete |
 
 </details>
 
@@ -385,7 +463,7 @@ Accessible at `/admin/` — requires Super Admin privileges.
 
 ---
 
-## 13. API REFERENCE
+## 15. API REFERENCE
 
 <details>
 <summary>AUTH — /api/auth</summary>
@@ -397,7 +475,7 @@ Accessible at `/admin/` — requires Super Admin privileges.
 | POST | `/login` | No | Login, returns JWT |
 | POST | `/forgot-password` | No | Request password reset OTP |
 | POST | `/reset-password` | No | Reset password using OTP |
-| GET | `/me` | Yes | Get current user profile |
+| GET | `/me` | Yes | Get current user profile (includes `monitor_limit`) |
 | PUT | `/me` | Yes | Update name, WhatsApp number, or password |
 | PUT | `/avatar` | Yes | Update profile avatar (base64 encoded) |
 | PUT | `/notification-prefs` | Yes | Toggle global notification preference |
@@ -410,11 +488,12 @@ Accessible at `/admin/` — requires Super Admin privileges.
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
 | GET | `/` | Yes | List all monitors for the current user |
-| POST | `/` | Yes | Create a new monitor |
+| POST | `/` | Yes | Create a new monitor (returns 403 if monitor limit reached) |
 | GET | `/:id` | Yes | Get monitor details + check history |
 | PUT | `/:id` | Yes | Update monitor settings |
 | DELETE | `/:id` | Yes | Delete a monitor |
 | POST | `/:id/ping` | Yes | Manually trigger a ping |
+| POST | `/bulk` | Yes | Bulk delete — body: `{ action: "delete", ids, password }` |
 
 </details>
 
@@ -424,13 +503,18 @@ Accessible at `/admin/` — requires Super Admin privileges.
 | Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
 | GET | `/stats` | Admin | Platform-wide statistics |
-| GET | `/users` | Admin | Paginated user list (supports search) |
+| GET | `/users` | Admin | Paginated user list (supports search, returns `monitor_count` + `monitor_limit`) |
 | GET | `/users/:id` | Admin | Single user profile + their monitors |
-| PUT | `/users/:id` | Admin | Edit user (promote, suspend, etc.) |
+| PUT | `/users/:id` | Admin | Edit user (promote, suspend, set `monitor_limit`, etc.) |
 | DELETE | `/users/:id` | Super Admin | Delete a user (requires password confirmation) |
+| POST | `/users/bulk` | Admin | Bulk action on users — body: `{ action, ids, password? }`. Actions: `verify`, `enable`, `disable`, `delete` |
 | GET | `/monitors` | Admin | All monitors across all users |
+| PUT | `/monitors/:id` | Admin | Edit a monitor |
+| DELETE | `/monitors/:id` | Admin | Delete a monitor (requires password confirmation) |
+| POST | `/monitors/bulk` | Admin | Bulk action on monitors — body: `{ action, ids, password?, intervalMins? }`. Actions: `pause`, `activate`, `interval`, `delete` |
 | GET | `/contact` | Admin | Paginated contact form submissions |
 | PUT | `/contact/:id/read` | Admin | Mark a message as read |
+| POST | `/contact/bulk` | Admin | Bulk action on messages — body: `{ action, ids, password? }`. Actions: `mark_read`, `delete` |
 
 </details>
 
@@ -448,7 +532,7 @@ Accessible at `/admin/` — requires Super Admin privileges.
 
 ---
 
-## 14. IMPORTANT NOTES
+## 16. IMPORTANT NOTES
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -480,13 +564,16 @@ Chosen automatically at startup from `DATABASE_URL`. PostgreSQL via Neon is the 
 **CSS architecture**
 The navigation responsiveness does not rely on Tailwind CDN. Custom classes in `style.css` handle all breakpoints so the nav works even if Tailwind is slow or blocked.
 
+**Monitor limit defaults**
+Regular users default to 20 monitors. Admins and superadmins have no limit. Limits can be adjusted per-user via the admin panel at any time without any downtime.
+
 </details>
 
 <img src='https://i.imgur.com/LyHic3i.gif'/>
 
 ---
 
-## 15. UPDATES & CONTACT
+## 17. UPDATES & CONTACT
 
 <details>
 <summary>TAP TO EXPAND</summary>

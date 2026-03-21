@@ -55,9 +55,7 @@
   </header>
 
   <main class="flex-1 overflow-y-auto">
-    <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8" id="main-content">
-      
-    </div>
+    <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8 pb-28" id="main-content"></div>
   </main>
 
   <footer class="border-t border-[#1e2740] bg-[#0d1117] px-6 py-2.5 flex-shrink-0 rounded-t-xl">
@@ -68,7 +66,27 @@
   </footer>
 </div>
 
-<!-- Monitor Modal -->
+<!-- Bulk action bar (fixed bottom) -->
+<div id="mon-bulk-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:#0d1117;border-top:1px solid rgba(74,222,128,.25);padding:12px 16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.5)">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block"></span>
+    <span id="mon-bulk-count" style="font-size:13px;font-weight:600;color:#e2e8f0"></span>
+    <button onclick="clearMonSel()" style="font-size:11px;color:#6b7280;background:rgba(255,255,255,.06);border:none;border-radius:8px;padding:3px 10px;cursor:pointer">✕ Clear</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <button onclick="bulkPause()" style="font-size:12px;font-weight:600;background:rgba(96,165,250,.1);color:#60a5fa;border:1px solid rgba(96,165,250,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(96,165,250,.2)'" onmouseout="this.style.background='rgba(96,165,250,.1)'">
+      <i class="fa-solid fa-pause" style="margin-right:5px"></i>Pause
+    </button>
+    <button onclick="bulkActivate()" style="font-size:12px;font-weight:600;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(74,222,128,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(34,197,94,.22)'" onmouseout="this.style.background='rgba(34,197,94,.12)'">
+      <i class="fa-solid fa-play" style="margin-right:5px"></i>Activate
+    </button>
+    <button onclick="openBulkDelMon()" style="font-size:12px;font-weight:600;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:7px 14px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
+      <i class="fa-solid fa-trash" style="margin-right:5px"></i>Delete
+    </button>
+  </div>
+</div>
+
+<!-- Monitor add/edit Modal -->
 <div id="monitor-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] items-center justify-center p-4">
   <div class="modal-inner bg-[#0d1117] border border-[#1e2740] rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
     <div class="flex items-center justify-between p-6 border-b border-[#1e2740]">
@@ -133,7 +151,6 @@
             class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-green-500/50 outline-none transition-colors"/>
         </div>
       </div>
-      <!-- Notification prefs -->
       <div class="border border-[#1e2740] rounded-xl p-4 space-y-3 bg-[#0a0d12]">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">WhatsApp Notifications</p>
         <label class="flex items-center justify-between cursor-pointer select-none">
@@ -157,23 +174,68 @@
           <input type="hidden" id="m-notify-up" value="true"/>
         </label>
       </div>
-
       <button id="modal-save-btn" onclick="saveMonitor()"
         class="gm-btn-primary w-full bg-green-600 hover:bg-green-500 text-white font-semibold rounded-xl py-3 text-sm flex items-center justify-center shadow-lg shadow-green-600/20">
         <span>Add Monitor</span>
       </button>
-      <button onclick="closeModal('monitor-modal')" class="gm-btn-ghost w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm">
-        Cancel
-      </button>
+      <button onclick="closeModal('monitor-modal')" class="gm-btn-ghost w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm">Cancel</button>
     </div>
   </div>
 </div>
 
-<style>.interval-opt.selected { border-color: rgba(34,197,94,.4); color: #4ade80; background: rgba(34,197,94,.08); }</style>
+<!-- Delete single monitor modal -->
+<div id="del-mon-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] items-center justify-center p-4">
+  <div class="bg-[#0d1117] border border-[#1e2740] rounded-2xl w-full max-w-sm shadow-2xl">
+    <div class="flex items-center justify-between p-5 border-b border-[#1e2740]">
+      <h2 class="text-base font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Delete Monitor</h2>
+      <button onclick="closeModal('del-mon-modal')" class="gm-close-btn text-gray-500 hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">✕</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <p class="text-sm text-gray-400">You are about to permanently delete <span class="font-semibold text-gray-100" id="del-mon-name"></span> and all its history. This cannot be undone.</p>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Enter your password to confirm</label>
+        <input id="del-mon-pw" type="password" placeholder="Your current password"
+          onkeydown="if(event.key==='Enter')confirmDeleteMon()"
+          class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-red-500/50 outline-none transition-colors"/>
+        <p id="del-mon-err" class="text-xs text-red-400 mt-1.5 min-h-[16px]"></p>
+      </div>
+      <button id="del-mon-btn" onclick="confirmDeleteMon()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl py-3 text-sm transition-colors shadow-lg shadow-red-600/20">Delete Monitor</button>
+      <button onclick="closeModal('del-mon-modal')" class="w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm hover:bg-white/5 transition-colors">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk delete monitors modal -->
+<div id="bulk-del-mon-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] items-center justify-center p-4">
+  <div class="bg-[#0d1117] border border-[#1e2740] rounded-2xl w-full max-w-sm shadow-2xl">
+    <div class="flex items-center justify-between p-5 border-b border-[#1e2740]">
+      <h2 class="text-base font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Bulk Delete</h2>
+      <button onclick="closeModal('bulk-del-mon-modal')" class="gm-close-btn text-gray-500 hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">✕</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <p class="text-sm text-gray-400">Permanently delete <span id="bulk-del-mon-count" class="font-semibold text-gray-100"></span> and all their check history? This cannot be undone.</p>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Enter your password to confirm</label>
+        <input id="bulk-del-mon-pw" type="password" placeholder="Your current password"
+          onkeydown="if(event.key==='Enter')confirmBulkDelMon()"
+          class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-red-500/50 outline-none transition-colors"/>
+        <p id="bulk-del-mon-err" class="text-xs text-red-400 mt-1.5 min-h-[16px]"></p>
+      </div>
+      <button id="bulk-del-mon-btn" onclick="confirmBulkDelMon()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl py-3 text-sm transition-colors shadow-lg shadow-red-600/20">Delete Selected</button>
+      <button onclick="closeModal('bulk-del-mon-modal')" class="w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm hover:bg-white/5 transition-colors">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.interval-opt.selected { border-color: rgba(34,197,94,.4); color: #4ade80; background: rgba(34,197,94,.08); }
+.m-cb { width:16px;height:16px;accent-color:#4ade80;cursor:pointer;flex-shrink:0 }
+</style>
 
 <script src="/assets/app.js"></script>
 <script>
 let _user = null, monitors = [], _searchQuery = '', _refreshTimer = null;
+let selectedMonitors = new Set();
 
 async function init() {
   _user = await requireAuth();
@@ -189,6 +251,7 @@ async function init() {
 }
 
 async function loadMonitors(silent = false) {
+  if (!silent) { selectedMonitors.clear(); updateMonBulkBar(); }
   try {
     const fresh = await api('GET', '/api/monitors');
     monitors = fresh;
@@ -218,16 +281,39 @@ function renderMonitors() {
   const total  = monitors.length;
   const up     = monitors.filter(m => m.last_status === 'up').length;
   const down   = monitors.filter(m => m.last_status === 'down').length;
+
+  const limit    = _user ? _user.monitor_limit : null;
+  const atLimit  = limit !== null && total >= limit;
+  const nearLimit = limit !== null && !atLimit && total >= limit * 0.8;
+  const remaining = limit !== null ? limit - total : null;
+  const limitLabel = limit !== null ? ` — ${total} of ${limit}` : '';
+
   document.getElementById('main-content').innerHTML = `
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 animate-fade-up">
       <div>
         <h1 class="text-2xl font-bold">My Monitors</h1>
-        <p class="text-gray-500 text-sm mt-1">${total} monitor${total!==1?'s':''} — ${up} up, ${down} down</p>
+        <p class="text-gray-500 text-sm mt-1">${total} monitor${total!==1?'s':''}${limitLabel} — ${up} up, ${down} down</p>
       </div>
-      <button onclick="openAddModal()" class="gm-btn-primary inline-flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-lg shadow-green-600/20 self-start sm:self-auto">
-        + Add Monitor
-      </button>
+      ${atLimit
+        ? `<button disabled title="Monitor limit reached" class="inline-flex items-center gap-2 bg-gray-700 text-gray-400 font-semibold px-4 py-2.5 rounded-xl text-sm self-start sm:self-auto cursor-not-allowed opacity-60">
+            🚫 Limit Reached
+           </button>`
+        : `<button onclick="openAddModal()" class="gm-btn-primary inline-flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-lg shadow-green-600/20 self-start sm:self-auto">
+            + Add Monitor
+           </button>`
+      }
     </div>
+
+    ${atLimit ? `<div class="flex items-start gap-3 bg-orange-500/10 border border-orange-500/25 rounded-xl px-4 py-3 mb-4 animate-fade-up">
+      <span class="text-lg mt-0.5">🚫</span>
+      <div>
+        <p class="text-sm text-orange-400 font-semibold">Monitor limit reached (${total}/${limit})</p>
+        <p class="text-xs text-orange-400/70 mt-0.5">You've used all ${limit} monitor slots. Contact an administrator to increase your limit.</p>
+      </div>
+    </div>` : nearLimit ? `<div class="flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/25 rounded-xl px-4 py-3 mb-4 animate-fade-up">
+      <span class="text-lg">⚡</span>
+      <p class="text-sm text-yellow-400 font-medium">Approaching limit — ${remaining} monitor slot${remaining!==1?'s':''} remaining of ${limit}</p>
+    </div>` : ''}
 
     <!-- Search -->
     <div class="mb-4 animate-fade-up">
@@ -252,15 +338,32 @@ function renderMonitors() {
           </div>`
         : `<div class="text-center py-16 text-gray-500 text-sm">No monitors match "<strong class="text-gray-300">${escHtml(_searchQuery)}</strong>"</div>`
       )
-      : `<div class="space-y-3">
-          ${filtered.map(m => siteCardHTML(m, {
-            detailUrl: '/monitors/detail/',
-            actions: `<div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[#1e2740]" onclick="event.stopPropagation()">
-              <a href="/monitors/detail/?id=${m.id}" class="gm-action-chip text-xs text-gray-400 hover:text-green-400 transition-colors px-3 py-1.5 bg-white/5 rounded-lg">Details</a>
-              <button onclick="editMon(${m.id})" class="gm-action-chip text-xs text-gray-400 hover:text-blue-400 transition-colors px-3 py-1.5 bg-white/5 rounded-lg">Edit</button>
-              <button onclick="deleteMon(${m.id},'${escHtml(m.name)}')" class="gm-action-chip text-xs text-gray-400 hover:text-red-400 transition-colors px-3 py-1.5 bg-white/5 rounded-lg">Delete</button>
-            </div>`
-          })).join('')}
+      : `
+        <!-- Select-all row -->
+        <div class="flex items-center gap-3 mb-3 px-1 animate-fade-up">
+          <label class="flex items-center gap-2 cursor-pointer select-none group">
+            <input type="checkbox" id="mon-select-all" class="m-cb" onchange="toggleSelectAllMon()" title="Select all"/>
+            <span class="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">Select all</span>
+          </label>
+        </div>
+        <div class="space-y-3">
+          ${filtered.map(m => `
+            <div class="relative" style="position:relative">
+              <label class="absolute top-3 left-3 z-10 cursor-pointer" style="position:absolute;top:12px;left:12px;z-index:10" onclick="event.stopPropagation()">
+                <input type="checkbox" class="m-cb mon-row-cb" data-mid="${m.id}" onchange="toggleMonCheck(${m.id},this)" ${selectedMonitors.has(m.id)?'checked':''}/>
+              </label>
+              <div style="padding-left:2rem">
+                ${siteCardHTML(m, {
+                  detailUrl: '/monitors/detail/',
+                  actions: `<div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[#1e2740]" onclick="event.stopPropagation()">
+                    <a href="/monitors/detail/?id=${m.id}" class="gm-action-chip text-xs text-gray-400 hover:text-green-400 transition-colors px-3 py-1.5 bg-white/5 rounded-lg">Details</a>
+                    <button onclick="editMon(${m.id})" class="gm-action-chip text-xs text-gray-400 hover:text-blue-400 transition-colors px-3 py-1.5 bg-white/5 rounded-lg">Edit</button>
+                    <button onclick="deleteMon(${m.id},'${escHtml(m.name)}')" class="gm-action-chip text-xs text-gray-400 hover:text-red-400 transition-colors px-3 py-1.5 bg-white/5 rounded-lg">Delete</button>
+                  </div>`
+                })}
+              </div>
+            </div>
+          `).join('')}
         </div>`
     }
   `;
@@ -273,6 +376,98 @@ function onSearchInput(val) {
 }
 function clearSearch() { _searchQuery = ''; renderMonitors(); }
 
+// ── Bulk selection ─────────────────────────────────────────────────
+function toggleMonCheck(id, checkbox) {
+  if (checkbox.checked) selectedMonitors.add(id);
+  else selectedMonitors.delete(id);
+  updateMonBulkBar();
+  const allCbs = document.querySelectorAll('.mon-row-cb');
+  const allSel = document.getElementById('mon-select-all');
+  if (allSel) {
+    allSel.indeterminate = selectedMonitors.size > 0 && selectedMonitors.size < allCbs.length;
+    allSel.checked = allCbs.length > 0 && selectedMonitors.size === allCbs.length;
+  }
+}
+
+function toggleSelectAllMon() {
+  const allSel = document.getElementById('mon-select-all');
+  const allCbs = document.querySelectorAll('.mon-row-cb');
+  const shouldSelect = allSel.checked;
+  allCbs.forEach(cb => {
+    cb.checked = shouldSelect;
+    const id = parseInt(cb.dataset.mid);
+    if (shouldSelect) selectedMonitors.add(id);
+    else selectedMonitors.delete(id);
+  });
+  updateMonBulkBar();
+}
+
+function updateMonBulkBar() {
+  const bar = document.getElementById('mon-bulk-bar');
+  const countEl = document.getElementById('mon-bulk-count');
+  if (!bar) return;
+  if (selectedMonitors.size > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `${selectedMonitors.size} monitor${selectedMonitors.size !== 1 ? 's' : ''} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearMonSel() {
+  selectedMonitors.clear();
+  document.querySelectorAll('.m-cb').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+  updateMonBulkBar();
+}
+
+// ── Bulk actions ────────────────────────────────────────────────────
+async function bulkPause() {
+  if (!selectedMonitors.size) return;
+  try {
+    const res = await api('POST', '/api/monitors/bulk', { action: 'pause', ids: Array.from(selectedMonitors) });
+    toast.success(`Paused ${res.success} monitor${res.success!==1?'s':''}${res.skipped?' ('+res.skipped+' skipped)':''}`);
+    loadMonitors(true);
+  } catch (err) { toast.error(err.message); }
+}
+
+async function bulkActivate() {
+  if (!selectedMonitors.size) return;
+  try {
+    const res = await api('POST', '/api/monitors/bulk', { action: 'activate', ids: Array.from(selectedMonitors) });
+    toast.success(`Activated ${res.success} monitor${res.success!==1?'s':''}${res.skipped?' ('+res.skipped+' skipped)':''}`);
+    loadMonitors(true);
+  } catch (err) { toast.error(err.message); }
+}
+
+function openBulkDelMon() {
+  if (!selectedMonitors.size) return;
+  const n = selectedMonitors.size;
+  document.getElementById('bulk-del-mon-count').textContent = `${n} monitor${n!==1?'s':''}`;
+  document.getElementById('bulk-del-mon-pw').value = '';
+  document.getElementById('bulk-del-mon-err').textContent = '';
+  openModal('bulk-del-mon-modal');
+  setTimeout(() => document.getElementById('bulk-del-mon-pw').focus(), 120);
+}
+
+async function confirmBulkDelMon() {
+  const pw = document.getElementById('bulk-del-mon-pw').value;
+  const errEl = document.getElementById('bulk-del-mon-err');
+  if (!pw) { errEl.textContent = 'Please enter your password.'; return; }
+  errEl.textContent = '';
+  const btn = document.getElementById('bulk-del-mon-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try {
+    const res = await api('POST', '/api/monitors/bulk', { action: 'delete', ids: Array.from(selectedMonitors), password: pw });
+    closeModal('bulk-del-mon-modal');
+    toast.success(`Deleted ${res.success} monitor${res.success!==1?'s':''}${res.skipped?' ('+res.skipped+' skipped)':''}`);
+    loadMonitors(true);
+  } catch (err) {
+    errEl.textContent = err.message || 'Incorrect password.';
+    btn.disabled = false; btn.textContent = 'Delete Selected';
+  }
+}
+
+// ── Single actions ──────────────────────────────────────────────────
 function editMon(id) {
   const m = monitors.find(m => String(m.id) === String(id));
   if (m) openEditModal(m);
@@ -336,27 +531,5 @@ async function confirmDeleteMon() {
 
 init();
 </script>
-
-<!-- Delete monitor confirmation modal -->
-<div id="del-mon-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] items-center justify-center p-4">
-  <div class="bg-[#0d1117] border border-[#1e2740] rounded-2xl w-full max-w-sm shadow-2xl">
-    <div class="flex items-center justify-between p-5 border-b border-[#1e2740]">
-      <h2 class="text-base font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Delete Monitor</h2>
-      <button onclick="closeModal('del-mon-modal')" class="gm-close-btn text-gray-500 hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">✕</button>
-    </div>
-    <div class="p-5 space-y-4">
-      <p class="text-sm text-gray-400">You are about to permanently delete <span class="font-semibold text-gray-100" id="del-mon-name"></span> and all its history. This cannot be undone.</p>
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Enter your password to confirm</label>
-        <input id="del-mon-pw" type="password" placeholder="Your current password"
-          onkeydown="if(event.key==='Enter')confirmDeleteMon()"
-          class="w-full bg-[#0a0d12] border border-[#1e2740] text-gray-100 rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:border-red-500/50 outline-none transition-colors"/>
-        <p id="del-mon-err" class="text-xs text-red-400 mt-1.5 min-h-[16px]"></p>
-      </div>
-      <button id="del-mon-btn" onclick="confirmDeleteMon()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl py-3 text-sm transition-colors shadow-lg shadow-red-600/20">Delete Monitor</button>
-      <button onclick="closeModal('del-mon-modal')" class="w-full border border-[#1e2740] text-gray-400 rounded-xl py-2.5 text-sm hover:bg-white/5 transition-colors">Cancel</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>

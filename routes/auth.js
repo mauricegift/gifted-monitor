@@ -386,6 +386,7 @@ router.get("/me", require("../lib/auth").requireAuth, async (req, res) => {
       avatar: user.avatar || null,
       notify_down: user.notify_down !== false,
       notify_up:   user.notify_up   !== false,
+      monitor_limit: (user.is_admin || user.is_superadmin) ? null : (user.monitor_limit ?? 20),
     });
   } catch {
     res.status(500).json({ error: "Failed to load profile" });
