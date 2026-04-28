@@ -410,7 +410,7 @@ export default function Profile() {
                   <button
                     onClick={handleRequestEmailChange}
                     disabled={emailChangeLoading || !newEmail.trim()}
-                    className="btn h-10 px-4 rounded-xl bg-foreground text-sm font-medium text-muted hover:text-main disabled:opacity-50 shrink-0 gap-2"
+                    className="btn btn-primary h-10 px-4 rounded-xl text-sm font-medium disabled:opacity-50 shrink-0 gap-2"
                   >
                     {emailChangeLoading ? <Loader2 size={14} className="animate-spin" /> : null}
                     {emailChangeLoading ? "Sending…" : "Send link"}
