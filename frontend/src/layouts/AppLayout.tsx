@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Activity, LayoutDashboard, Monitor, User, Users, Settings,
+  LayoutDashboard, Monitor, User, Users, Settings,
   MessageSquare, LogOut, Menu, X, Shield, ChevronDown
 } from "lucide-react";
 import { ModeToggle } from "@/components/ui";
@@ -75,10 +75,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 font-bold text-sm font-outfit shrink-0">
-            <div className="w-8 h-8 bg-emerald-500 rounded-xl center text-white">
-              <Activity size={15} />
-            </div>
-            <span>Gifted Monitor</span>
+            <img
+              src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+              alt="Gifted Monitor"
+              className="w-8 h-8 rounded-full object-cover shrink-0"
+            />
+            <span><span className="text-emerald-500">Gifted</span> Monitor</span>
           </Link>
 
           {/* Desktop nav links */}
@@ -191,10 +193,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {/* Drawer header */}
               <div className="flex items-center justify-between px-5 h-14 border-b border-line shrink-0">
                 <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 font-bold text-sm font-outfit">
-                  <div className="w-7 h-7 bg-emerald-500 rounded-lg center text-white">
-                    <Activity size={13} />
-                  </div>
-                  <span>Gifted Monitor</span>
+                  <img
+                    src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+                    alt="Gifted Monitor"
+                    className="w-7 h-7 rounded-full object-cover shrink-0"
+                  />
+                  <span><span className="text-emerald-500">Gifted</span> Monitor</span>
                 </Link>
                 <button onClick={() => setMobileOpen(false)} className="btn h-8 w-8 rounded-xl bg-foreground">
                   <X size={16} />
