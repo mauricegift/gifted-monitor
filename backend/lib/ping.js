@@ -8,9 +8,9 @@ function buildCfg(monitor) {
   const cfg = {
     method: monitor.method.toLowerCase(),
     url: targetUrl,
-    timeout: 12000,
+    timeout: 20000,
     validateStatus: false,
-    maxRedirects: 5,
+    maxRedirects: 10,
     headers: { "User-Agent": "Mozilla/5.0 (compatible; GiftedMonitor/2.0)", Accept: "*/*" },
   };
   if (monitor.method === "POST") {
@@ -68,17 +68,30 @@ async function pingMonitor(monitor) {
 
   if (status === "down") {
     if (prevStatus !== "down") {
+      // ── First DOWN detection ──────────────────────────────────────────────
+      // Record incident start but DO NOT alert yet. Wait for the next check
+      // to confirm this isn't a brief blip. last_reminder_at = null signals
+      // "incident pending confirmation — no alert sent yet".
       updates.incident_start = now;
+      updates.last_reminder_at = null;
+      console.log(`🟡 [PENDING] ${targetUrl} — first DOWN, awaiting next check to confirm`);
+
+    } else if (monitor.incident_start && !monitor.last_reminder_at) {
+      // ── Second consecutive DOWN — confirmed outage, send alert now ────────
       updates.last_reminder_at = now;
+      console.log(`🔴 [CONFIRMED DOWN] ${targetUrl} — sending alert`);
       if (monitor.notify_down !== false) {
         const user = await db.getUserById(monitor.user_id);
         if (user?.notify_down !== false)
           await mailer.sendSiteDown(user.email, user.name, monitor.name, monitor.url, errorMsg || "Unknown", mailer.formatTime(now));
       }
+
     } else if (monitor.last_reminder_at) {
+      // ── Already alerted — send a reminder every 24 h ─────────────────────
       const hoursSince = (Date.now() - new Date(monitor.last_reminder_at)) / (1000 * 60 * 60);
       if (hoursSince >= 24) {
         updates.last_reminder_at = now;
+        console.log(`🔴 [24H REMINDER] ${targetUrl}`);
         if (monitor.notify_down !== false) {
           const user = await db.getUserById(monitor.user_id);
           if (user?.notify_down !== false)
@@ -86,14 +99,23 @@ async function pingMonitor(monitor) {
         }
       }
     }
+
   } else if (status === "up" && prevStatus === "down" && monitor.incident_start) {
+    // ── Site recovered ────────────────────────────────────────────────────
     const downtimeMs = Date.now() - new Date(monitor.incident_start);
     updates.incident_start = null;
     updates.last_reminder_at = null;
-    if (monitor.notify_up !== false) {
+
+    // Only send "recovered" if we actually sent a "down" alert first.
+    // If last_reminder_at was null the blip resolved before we ever alerted —
+    // no need to tell the user about something they never heard about.
+    if (monitor.last_reminder_at && monitor.notify_up !== false) {
+      console.log(`✅ [RECOVERED] ${targetUrl} — sending recovery alert`);
       const user = await db.getUserById(monitor.user_id);
       if (user?.notify_up !== false)
         await mailer.sendSiteRecovered(user.email, user.name, monitor.name, monitor.url, `${responseTime}ms`, mailer.formatDuration(downtimeMs));
+    } else {
+      console.log(`✅ [RECOVERED — no alert needed] ${targetUrl} — blip resolved before confirmation`);
     }
   }
 
