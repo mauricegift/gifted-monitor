@@ -8,10 +8,10 @@ import { useAuthStore } from "@/store";
 
 const features = [
   { icon: Bell, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30", title: "Instant Email Alerts", desc: "Get notified the second your site goes down — directly in your inbox. Fast, reliable, no missed alerts.", aos: "flip-left" },
-  { icon: Clock, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30", title: "Configurable Check Intervals", desc: "Choose how often we check: every minute, 3 minutes, 5 minutes, or up to 24 hours.", aos: "fade-up" },
+  { icon: Zap, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30", title: "Keep Free Sites Awake", desc: "Sites on Render, Railway, and similar free tiers sleep after inactivity. Regular pings keep them alive and responsive.", aos: "fade-up" },
   { icon: TrendingUp, color: "text-purple-500 bg-purple-50 dark:bg-purple-950/30", title: "Uptime History & Stats", desc: "Visual uptime bars and percentage stats so you can see your service reliability over time.", aos: "flip-right" },
   { icon: Globe, color: "text-orange-500 bg-orange-50 dark:bg-orange-950/30", title: "HTTP/HTTPS Monitoring", desc: "Monitor any public URL — websites, REST APIs, webhooks — with GET, HEAD, or POST.", aos: "zoom-in" },
-  { icon: Zap, color: "text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30", title: "Response Time Tracking", desc: "Track response times per check. Spot slowdowns before they become outages.", aos: "zoom-in-up" },
+  { icon: Clock, color: "text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30", title: "Configurable Intervals", desc: "Set check intervals from every 30 seconds up to 24 hours — customised per monitor based on your needs.", aos: "zoom-in-up" },
   { icon: Shield, color: "text-red-500 bg-red-50 dark:bg-red-950/30", title: "Incident Tracking", desc: "Know exactly when a site went down and how long it stayed down with incident timestamps.", aos: "flip-left" },
   { icon: Activity, color: "text-teal-500 bg-teal-50 dark:bg-teal-950/30", title: "Live Status Dashboard", desc: "One-glance overview of all your monitors. Green or red — you always know what's happening.", aos: "fade-right" },
   { icon: MessageSquare, color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30", title: "Multiple Monitors", desc: "Track up to 20 services per account. Add, pause, and delete monitors any time.", aos: "flip-right" },
@@ -37,8 +37,8 @@ export default function Home() {
                 data-aos="fade-right"
                 className="text-4xl md:text-5xl lg:text-6xl font-bold font-outfit leading-tight mb-5"
               >
-                Know When Your Site Goes Down{" "}
-                <span className="text-emerald-500">Before Your Users</span>
+                Keep Your Site Up{" "}
+                <span className="text-emerald-500">and Always Know When It's Down</span>
               </h1>
 
               <p
@@ -46,9 +46,11 @@ export default function Home() {
                 data-aos-delay="100"
                 className="text-base text-muted leading-relaxed mb-7 max-w-lg"
               >
-                Gifted Monitor checks your websites every few minutes and fires instant{" "}
-                <span className="text-emerald-500 font-semibold">email alerts</span> the moment
-                something goes wrong — so you can fix it fast.
+                Free hosting services like Render put your app to sleep when idle.{" "}
+                <span className="text-emerald-500 font-semibold">Gifted Monitor pings it at set intervals</span>{" "}
+                to keep it awake — and if it ever goes down, you'll get an instant{" "}
+                <span className="text-emerald-500 font-semibold">email alert</span>{" "}
+                so you can fix it before your users even notice.
               </p>
 
               <div data-aos="zoom-in" data-aos-delay="200" className="flex flex-wrap gap-3 mb-7">
@@ -136,7 +138,7 @@ export default function Home() {
         <div className="main">
           <div className="text-center mb-12">
             <h2 data-aos="zoom-in" className="text-3xl md:text-4xl font-bold font-outfit mb-3">Everything You Need to Stay Online</h2>
-            <p data-aos="fade-up" data-aos-delay="100" className="text-muted max-w-xl mx-auto text-sm">Simple, powerful uptime monitoring built for developers, freelancers, and small businesses.</p>
+            <p data-aos="fade-up" data-aos-delay="100" className="text-muted max-w-xl mx-auto text-sm">Built for developers and indie hackers who host on free tiers — keep your services alive, and know the moment anything breaks.</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
