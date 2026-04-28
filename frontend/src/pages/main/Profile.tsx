@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -197,7 +198,8 @@ function ApiKeysTab() {
 }
 
 export default function Profile() {
-  const { user, setUser, setAuth } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, setUser, setAuth, logout } = useAuthStore();
   const [tab, setTab] = useState<TabId>("profile");
   const [name, setName] = useState(user?.name || "");
   const [notifyDown, setNotifyDown] = useState(user?.notify_down ?? true);
@@ -238,8 +240,9 @@ export default function Profile() {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
-      toast.success(res.data.message);
-      reset();
+      toast.success(res.data.message + " Please log in again.");
+      logout();
+      navigate("/login", { replace: true });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       toast.error(error.response?.data?.error || "Failed to change password");
