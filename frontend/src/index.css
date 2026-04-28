@@ -41,6 +41,7 @@
 
 * { @apply outline-none; }
 
+html { overflow-x: hidden; }
 body { @apply bg-background text-main font-sans overflow-x-hidden; }
 
 .main { @apply max-w-[90%] 2xl:max-w-[1280px] mx-auto; }
