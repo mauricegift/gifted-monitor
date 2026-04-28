@@ -1,5 +1,5 @@
 <h1 align="center">🟢 Gifted Monitor</h1>
-<p align="center"><b>A full-stack self hostable, user friendly minimal uptime monitoring SaaS with multi-DB support</b></p>
+<p align="center"><b>Keep free-hosted sites awake. Know the moment yours goes down — before your users do.</b></p>
 
 <p align="center">
   <a href="https://monitor.giftedtech.co.ke"><img src="https://img.shields.io/badge/LIVE%20APP-monitor.giftedtech.co.ke-green?style=for-the-badge&logo=googlechrome" alt="Live App"/></a>
@@ -20,7 +20,13 @@
 <details>
 <summary>TAP TO EXPAND</summary>
 
-**Gifted Monitor** — A full-stack self hostable, user friendly minimal uptime monitoring SaaS with multi-DB support. It watches your websites 24/7 and sends instant Email alerts when something goes down — and again when it recovers.
+**Gifted Monitor** solves two real problems developers face with free hosting:
+
+1. **Free-tier sleep** — Platforms like Render, Railway, and Fly.io put your app to sleep after a period of inactivity. Gifted Monitor pings your service at your chosen interval so it stays awake and ready to respond instantly.
+
+2. **Silent downtime** — When your deployed site goes down, you're usually the last to know — after your users do. Gifted Monitor detects the outage immediately and sends you an email alert so you can fix it before anyone else notices.
+
+It's a full-stack self-hostable uptime monitoring SaaS with multi-DB support. It watches your websites 24/7, keeps free-tier services alive with regular pings, and sends instant email alerts when something goes down — and again when it recovers.
 
 **Live at:** [https://monitor.giftedtech.co.ke](https://monitor.giftedtech.co.ke)
 
