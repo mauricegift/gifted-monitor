@@ -18,17 +18,16 @@ export default function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
       status === "down"    && "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
       status === "unknown" && "bg-gray-100 dark:bg-gray-800 text-gray-500",
     )}>
-      {/* Blinking dot with ping ring for up/down */}
-      <span className="relative inline-flex items-center justify-center w-1.5 h-1.5">
-        {status !== "unknown" && (
-          <span className={clsx(
-            "absolute inline-flex w-full h-full rounded-full animate-ping opacity-75",
-            status === "up"   && "bg-emerald-500",
-            status === "down" && "bg-red-500",
-          )} />
+      {/* Pulsing dot — large ring for up/down to be highly visible */}
+      <span className="relative inline-flex items-center justify-center w-2.5 h-2.5">
+        {status === "up" && (
+          <span className="absolute inline-flex w-5 h-5 rounded-full animate-ping bg-emerald-400 opacity-50" />
+        )}
+        {status === "down" && (
+          <span className="absolute inline-flex w-5 h-5 rounded-full animate-ping bg-red-400 opacity-50" />
         )}
         <span className={clsx(
-          "relative inline-flex w-1.5 h-1.5 rounded-full",
+          "relative inline-flex w-2 h-2 rounded-full",
           status === "up"      && "bg-emerald-500",
           status === "down"    && "bg-red-500",
           status === "unknown" && "bg-gray-400",
