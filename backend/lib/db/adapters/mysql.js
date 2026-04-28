@@ -41,22 +41,23 @@ async function createMysqlAdapter(DATABASE_URL) {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
-  for (const col of ['is_superadmin TINYINT(1) DEFAULT 0','is_disabled TINYINT(1) DEFAULT 0','avatar LONGTEXT','notify_down TINYINT(1) DEFAULT 1','notify_up TINYINT(1) DEFAULT 1','monitor_limit INT DEFAULT 20','pending_email VARCHAR(150)'])
+  for (const col of ['is_superadmin TINYINT(1) DEFAULT 0','is_disabled TINYINT(1) DEFAULT 0','avatar LONGTEXT','notify_down TINYINT(1) DEFAULT 1','notify_up TINYINT(1) DEFAULT 1','monitor_limit INT DEFAULT 20','pending_email VARCHAR(150)','registration_ip VARCHAR(45)'])
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${col}`).catch(() => {});
-  for (const col of ['path TEXT','notify_down TINYINT(1) DEFAULT 1','notify_up TINYINT(1) DEFAULT 1'])
+  for (const col of ['path TEXT','notify_down TINYINT(1) DEFAULT 1','notify_up TINYINT(1) DEFAULT 1','incident_start DATETIME','last_reminder_at DATETIME'])
     await pool.query(`ALTER TABLE monitors ADD COLUMN IF NOT EXISTS ${col}`).catch(() => {});
 
   const row  = r => (r[0] instanceof Array ? r[0][0] : r[0]) || null;
 
   return {
     async getUserCount() { const [r] = await pool.query('SELECT COUNT(*) as c FROM users'); return r[0].c; },
-    async createUser({ username, name, email, whatsapp, passwordHash, isAdmin=false, isSuperAdmin=false }) {
-      const [r] = await pool.query('INSERT INTO users (username,name,email,whatsapp,password_hash,is_admin,is_superadmin) VALUES (?,?,?,?,?,?,?)', [username,name,email,whatsapp||'',passwordHash,isAdmin?1:0,isSuperAdmin?1:0]);
+    async createUser({ username, name, email, whatsapp, passwordHash, isAdmin=false, isSuperAdmin=false, registrationIp=null }) {
+      const [r] = await pool.query('INSERT INTO users (username,name,email,whatsapp,password_hash,is_admin,is_superadmin,registration_ip) VALUES (?,?,?,?,?,?,?,?)', [username,name,email,whatsapp||'',passwordHash,isAdmin?1:0,isSuperAdmin?1:0,registrationIp]);
       return { id: r.insertId, username, name, email, whatsapp: whatsapp||'', is_verified:false, is_admin:isAdmin, is_superadmin:isSuperAdmin, is_disabled:false };
     },
     async getUserByEmail(email) { return row(await pool.query('SELECT * FROM users WHERE email=?',[email])); },
     async getUserByUsername(username) { return row(await pool.query('SELECT * FROM users WHERE username=?',[username])); },
     async getUserById(id) { return row(await pool.query('SELECT * FROM users WHERE id=?',[id])); },
+    async getUserByRegistrationIp(ip) { return row(await pool.query('SELECT id,email FROM users WHERE registration_ip=? LIMIT 1',[ip])); },
     async updateUser(id, fields) {
       const keys=Object.keys(fields),vals=Object.values(fields);
       const set=keys.map(k=>`${k}=?`).join(',');
@@ -117,14 +118,19 @@ async function createMysqlAdapter(DATABASE_URL) {
       const [r]=await pool.query('INSERT INTO contact_messages (name,email,whatsapp,subject,message) VALUES (?,?,?,?,?)',[name,email,whatsapp||'',subject,message]);
       return { id:r.insertId, name, email, whatsapp, subject, message, is_read:false };
     },
-    async getContactMessages({page=1,limit=10}={}) {
+    async getContactMessages({page=1,limit=10,tab='new'}={}) {
       const offset=(page-1)*limit;
-      const [messages]=await pool.query('SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT ? OFFSET ?',[limit,offset]);
-      const [[cnt]]=await pool.query('SELECT COUNT(*) as c FROM contact_messages');
-      const [[unread]]=await pool.query('SELECT COUNT(*) as c FROM contact_messages WHERE is_read=0');
-      return { messages, total:cnt.c, unread:unread.c };
+      const safeTab=['new','read','draft'].includes(tab)?tab:'new';
+      const [messages]=await pool.query('SELECT * FROM contact_messages WHERE msg_status=? ORDER BY created_at DESC LIMIT ? OFFSET ?',[safeTab,limit,offset]);
+      const [[cnt]]=await pool.query('SELECT COUNT(*) as c FROM contact_messages WHERE msg_status=?',[safeTab]);
+      const [rows]=await pool.query('SELECT msg_status, COUNT(*) as c FROM contact_messages GROUP BY msg_status');
+      const counts={new:0,read:0,draft:0};
+      for(const row of rows){if(counts.hasOwnProperty(row.msg_status))counts[row.msg_status]=parseInt(row.c);}
+      return { messages, total:cnt.c, counts };
     },
-    async markContactRead(id) { await pool.query('UPDATE contact_messages SET is_read=1 WHERE id=?',[id]); },
+    async markContactRead(id) { await pool.query("UPDATE contact_messages SET is_read=1, msg_status='read' WHERE id=?",[id]); },
+    async markContactDraft(id) { await pool.query("UPDATE contact_messages SET is_read=1, msg_status='draft' WHERE id=?",[id]); },
+    async markContactNew(id) { await pool.query("UPDATE contact_messages SET is_read=0, msg_status='new' WHERE id=?",[id]); },
     async deleteContactMessage(id) { await pool.query('DELETE FROM contact_messages WHERE id=?',[id]); },
 
     async createApiKey(userId, name, keyHash, keyPrefix) {
