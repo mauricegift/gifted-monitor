@@ -54,7 +54,7 @@ It's a full-stack self-hostable uptime monitoring SaaS with multi-DB support. It
 | Bulk Actions | Select-all + bulk operations on monitors, users, and messages |
 | Pagination | Paginated monitor and user lists with smart page controls |
 | Monorepo | Backend builds and serves the React frontend as static files |
-| Auto-Refresh | Dashboard and monitor pages auto-refresh every 30 seconds |
+| Auto-Refresh | Dashboard and monitor pages auto-refresh every 5 seconds |
 
 </details>
 
