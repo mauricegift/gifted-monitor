@@ -152,8 +152,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 right-0 h-screen w-72 bg-background border-l border-line z-50 flex flex-col rounded-l-2xl shadow-xl md:hidden"
+              transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+              className="fixed top-0 right-0 h-dvh w-72 bg-background border-l border-line z-50 flex flex-col rounded-l-2xl shadow-xl md:hidden"
             >
               {/* Drawer header */}
               <div className="flex items-center justify-between px-5 h-14 border-b border-line shrink-0">
