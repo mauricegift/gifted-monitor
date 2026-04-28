@@ -142,6 +142,26 @@ router.delete('/:id', async (req, res) => {
   } catch { res.status(500).json({ error: 'Failed to delete monitor' }); }
 });
 
+router.patch('/:id/notifications', async (req, res) => {
+  try {
+    const db = getDB();
+    const monitor = await db.getMonitor(req.params.id);
+    if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
+    if (String(monitor.user_id) !== String(req.userId)) return res.status(403).json({ error: 'Forbidden' });
+
+    const { notify_down, notify_up } = req.body;
+    if (notify_down === undefined && notify_up === undefined)
+      return res.status(400).json({ error: 'Provide at least one of: notify_down, notify_up' });
+
+    const updates = {};
+    if (notify_down !== undefined) updates.notify_down = notify_down !== false && notify_down !== 'false';
+    if (notify_up   !== undefined) updates.notify_up   = notify_up   !== false && notify_up   !== 'false';
+
+    const updated = await db.updateMonitor(req.params.id, updates);
+    res.json({ id: updated.id, notify_down: updated.notify_down, notify_up: updated.notify_up });
+  } catch { res.status(500).json({ error: 'Failed to update notification preferences' }); }
+});
+
 router.post('/:id/ping', async (req, res) => {
   try {
     const db = getDB();
