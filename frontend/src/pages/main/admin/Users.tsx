@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, Shield, ShieldOff, Trash2, UserCheck, UserX, AlertCircle, Pencil, Monitor, KeyRound, Pause, Play, RefreshCw, Camera, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Search, Shield, ShieldOff, Trash2, UserCheck, UserX, AlertCircle, Pencil, Monitor, KeyRound, Pause, Play, RefreshCw, Camera, X, ZoomIn, ZoomOut, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import Cropper from "react-easy-crop";
 import { AppLayout } from "@/layouts";
 import { Modal, ButtonWithLoader, InputWithoutIcon, InputCheck, Breadcrumb } from "@/components/ui";
@@ -34,7 +35,7 @@ export default function AdminUsers() {
 
   // Edit modal state
   const [editTarget, setEditTarget] = useState<User | null>(null);
-  const [editForm, setEditForm]     = useState({ name: "", email: "", username: "", whatsapp: "", monitor_limit: 20 });
+  const [editForm, setEditForm]     = useState({ name: "", email: "", username: "", monitor_limit: 20 });
 
   // Avatar crop state for edit
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,7 +125,6 @@ export default function AdminUsers() {
       name: user.name || "",
       email: user.email || "",
       username: user.username || "",
-      whatsapp: (user as unknown as { whatsapp?: string }).whatsapp || "",
       monitor_limit: user.monitor_limit ?? 20,
     });
     setEditAvatar(user.avatar);
@@ -360,10 +360,6 @@ export default function AdminUsers() {
             label="Username" type="text" value={editForm.username}
             onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
           />
-          <InputWithoutIcon
-            label="Phone / WhatsApp" type="tel" value={editForm.whatsapp}
-            onChange={e => setEditForm(f => ({ ...f, whatsapp: e.target.value }))}
-          />
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Monitor limit</label>
             <input
@@ -404,6 +400,24 @@ export default function AdminUsers() {
                   <StatusBadge status={(m.last_status as "up" | "down" | "unknown") ?? "unknown"} size="sm" />
                   <span className="text-xs text-muted">{parseFloat(String(m.uptime_pct ?? 100)).toFixed(1)}%</span>
                   {!m.is_active && <span className="text-[9px] font-bold bg-amber-100 dark:bg-amber-900/20 text-amber-600 px-1.5 py-0.5 rounded-full">PAUSED</span>}
+                  <a
+                    href={m.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open site"
+                    className="btn h-7 w-7 rounded-lg bg-background text-muted hover:text-emerald-500 transition-colors shrink-0"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <ExternalLink size={12} />
+                  </a>
+                  <Link
+                    to={`/admin/monitors/${m.id}`}
+                    title="View details"
+                    onClick={() => setMonitorsUser(null)}
+                    className="btn h-7 w-7 rounded-lg bg-background text-muted hover:text-main transition-colors shrink-0"
+                  >
+                    <Monitor size={12} />
+                  </Link>
                 </div>
               </div>
             ))

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Zap, Pause, Play, Trash2, Edit2, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Zap, Pause, Play, Trash2, Edit2, X, RefreshCw, User2, Mail } from "lucide-react";
 import { AppLayout } from "@/layouts";
 import { StatusBadge, UptimeBar } from "@/components/main";
 import { Modal, ButtonWithLoader, InputWithoutIcon, SelectWithoutIcon, InputCheck, Breadcrumb } from "@/components/ui";
@@ -23,7 +23,13 @@ type EditData = {
   notify_up: boolean;
 };
 
-export default function MonitorDetail() {
+type AdminMonitor = Monitor & {
+  user_name?: string;
+  user_username?: string;
+  user_email?: string;
+};
+
+export default function AdminMonitorDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -32,25 +38,25 @@ export default function MonitorDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
 
-  const { data: monitor, isLoading, isFetching } = useQuery<Monitor>({
-    queryKey: ["monitor", id],
-    queryFn: () => api.get(`/monitors/${id}`).then(r => r.data),
+  const { data: monitor, isLoading, isFetching } = useQuery<AdminMonitor>({
+    queryKey: ["admin-monitor", id],
+    queryFn: () => api.get(`/admin/monitors/${id}`).then(r => r.data),
     enabled: !!id,
-    refetchInterval: 3000,
+    refetchInterval: 5000,
   });
 
   const pingMutation = useMutation({
-    mutationFn: () => api.post(`/monitors/${id}/ping`),
-    onSuccess: () => { toast.success("Ping triggered!"); qc.invalidateQueries({ queryKey: ["monitor", id] }); },
+    mutationFn: () => api.post(`/admin/monitors/${id}/ping`),
+    onSuccess: () => { toast.success("Ping triggered!"); qc.invalidateQueries({ queryKey: ["admin-monitor", id] }); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<EditData>) => api.put(`/monitors/${id}`, data).then(r => r.data),
+    mutationFn: (data: Partial<EditData>) => api.put(`/admin/monitors/${id}`, data).then(r => r.data),
     onSuccess: () => {
       toast.success("Monitor updated");
       setEditing(false);
-      qc.invalidateQueries({ queryKey: ["monitor", id] });
-      qc.invalidateQueries({ queryKey: ["monitors"] });
+      qc.invalidateQueries({ queryKey: ["admin-monitor", id] });
+      qc.invalidateQueries({ queryKey: ["admin-monitors"] });
     },
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { error?: string } } };
@@ -59,11 +65,11 @@ export default function MonitorDetail() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/monitors/${id}`, { data: { password: deletePassword } }),
+    mutationFn: () => api.delete(`/admin/monitors/${id}`, { data: { password: deletePassword } }),
     onSuccess: () => {
       toast.success("Monitor deleted");
-      qc.invalidateQueries({ queryKey: ["monitors"] });
-      navigate("/monitors");
+      qc.invalidateQueries({ queryKey: ["admin-monitors"] });
+      navigate("/admin/monitors");
     },
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { error?: string } } };
@@ -103,15 +109,24 @@ export default function MonitorDetail() {
   }
 
   if (!monitor) {
-    return <AppLayout><div className="text-center py-20 text-muted">Monitor not found</div></AppLayout>;
+    return (
+      <AppLayout>
+        <div className="text-center py-20 text-muted">Monitor not found</div>
+      </AppLayout>
+    );
   }
 
   return (
     <AppLayout>
       <div className="space-y-5">
-        <Breadcrumb crumbs={[{ label: "Monitors", to: "/monitors" }, { label: monitor.name }]} />
+        <Breadcrumb crumbs={[
+          { label: "Admin", to: "/admin/dashboard" },
+          { label: "All Monitors", to: "/admin/monitors" },
+          { label: monitor.name },
+        ]} />
+
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="btn h-9 w-9 rounded-xl bg-foreground">
+          <button onClick={() => navigate("/admin/monitors")} className="btn h-9 w-9 rounded-xl bg-foreground">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">
@@ -120,7 +135,7 @@ export default function MonitorDetail() {
           </div>
           <StatusBadge status={monitor.last_status} />
           <button
-            onClick={() => qc.invalidateQueries({ queryKey: ["monitor", id] })}
+            onClick={() => qc.invalidateQueries({ queryKey: ["admin-monitor", id] })}
             disabled={isFetching}
             className="btn h-9 w-9 rounded-xl bg-foreground text-muted hover:text-main transition-colors disabled:opacity-50"
             title="Refresh"
@@ -128,6 +143,28 @@ export default function MonitorDetail() {
             <RefreshCw size={15} className={isFetching ? "animate-spin" : ""} />
           </button>
         </div>
+
+        {/* Owner info */}
+        {(monitor.user_username || monitor.user_email) && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4">
+            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">Monitor Owner</p>
+            <div className="flex flex-wrap gap-4">
+              {monitor.user_username && (
+                <div className="flex items-center gap-2 text-sm">
+                  <User2 size={14} className="text-blue-500 shrink-0" />
+                  <span className="font-medium">@{monitor.user_username}</span>
+                  {monitor.user_name && <span className="text-muted">({monitor.user_name})</span>}
+                </div>
+              )}
+              {monitor.user_email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail size={14} className="text-blue-500 shrink-0" />
+                  <span className="text-muted">{monitor.user_email}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
@@ -178,11 +215,12 @@ export default function MonitorDetail() {
               { label: "Full URL", value: monitor.url + (monitor.path || "") },
               { label: "Notify on down", value: monitor.notify_down ? "Yes" : "No" },
               { label: "Notify on recovery", value: monitor.notify_up ? "Yes" : "No" },
+              { label: "Monitor ID", value: String(monitor.id) },
               { label: "Created", value: formatDate(monitor.created_at) },
             ].map(d => (
               <div key={d.label} className="flex justify-between gap-4">
                 <span className="text-muted">{d.label}</span>
-                <span className="font-medium truncate text-right">{d.value}</span>
+                <span className="font-medium truncate text-right max-w-[60%]">{d.value}</span>
               </div>
             ))}
           </div>
@@ -274,7 +312,7 @@ export default function MonitorDetail() {
 
       <Modal isOpen={deleteOpen} onClose={() => { setDeleteOpen(false); setDeletePassword(""); }} title="Delete monitor">
         <div className="space-y-4">
-          <p className="text-sm text-muted">This will permanently delete <strong>{monitor.name}</strong> and all its check history. Enter your password to confirm.</p>
+          <p className="text-sm text-muted">This will permanently delete <strong>{monitor.name}</strong> and all its check history. Enter your admin password to confirm.</p>
           <InputWithoutIcon type="password" label="Your password" placeholder="••••••••" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} />
           <div className="flex gap-3">
             <button onClick={() => { setDeleteOpen(false); setDeletePassword(""); }} className="flex-1 h-10 rounded-xl btn bg-foreground text-sm">Cancel</button>

@@ -11,6 +11,7 @@ import { Login, Signup, ForgotPassword, VerifyOtp, ResetPassword } from "@/pages
 import { Dashboard, Monitors, MonitorDetail, CreateMonitor, Profile } from "@/pages/main";
 import AdminUsers from "@/pages/main/admin/Users";
 import AdminMonitors from "@/pages/main/admin/AdminMonitors";
+import AdminMonitorDetail from "@/pages/main/admin/AdminMonitorDetail";
 import Messages from "@/pages/main/admin/Messages";
 import AdminDashboard from "@/pages/main/admin/AdminDashboard";
 
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/monitors" element={<AdminRoute><AdminMonitors /></AdminRoute>} />
+        <Route path="/admin/monitors/:id" element={<AdminRoute><AdminMonitorDetail /></AdminRoute>} />
         <Route path="/admin/messages" element={<AdminRoute><Messages /></AdminRoute>} />
 
         {/* Fallback */}

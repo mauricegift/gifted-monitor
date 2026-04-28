@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { PublicLayout } from "@/layouts";
-import { Key, ChevronDown, ChevronRight, Copy, CheckCircle, Activity, Plus, Settings, Trash2, Zap, List } from "lucide-react";
+import { Key, ChevronDown, ChevronRight, Copy, CheckCircle, Activity, Settings, Trash2, Zap, List } from "lucide-react";
 import { toast } from "sonner";
 
-function CopyButton({ text }: { text: string }) {
+// ── Copy button ───────────────────────────────────────────────────────────────
+function CopyButton({ text, light }: { text: string; light?: boolean }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard.writeText(text).then(() => {
@@ -13,24 +14,197 @@ function CopyButton({ text }: { text: string }) {
     });
   };
   return (
-    <button onClick={copy} className="absolute top-3 right-3 btn h-7 w-7 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">
+    <button
+      onClick={copy}
+      className={`absolute top-2.5 right-2.5 btn h-7 w-7 rounded-lg transition-colors ${
+        light
+          ? "bg-gray-200 hover:bg-gray-300 text-gray-500 hover:text-gray-700"
+          : "bg-white/10 hover:bg-white/20 text-white/60 hover:text-white"
+      }`}
+    >
       {copied ? <CheckCircle size={13} /> : <Copy size={13} />}
     </button>
   );
 }
 
+// ── Very-light syntax highlighting ───────────────────────────────────────────
+// Works entirely via CSS classes, no external library needed.
+type Lang = "bash" | "json" | "javascript" | "python" | "php" | "url";
+
+function highlight(code: string, lang: Lang): React.ReactNode {
+  if (lang === "url") {
+    return <span className="text-emerald-600 dark:text-emerald-400 break-all">{code}</span>;
+  }
+
+  if (lang === "json") {
+    const parts = code.split(/("(?:\\.|[^"\\])*"(?:\s*:)?|true|false|null|\b\d+\.?\d*\b)/g);
+    return parts.map((part, i) => {
+      if (/^"[^"]*":/.test(part)) return <span key={i} className="text-sky-600 dark:text-sky-300">{part}</span>;
+      if (/^"/.test(part)) return <span key={i} className="text-emerald-600 dark:text-emerald-300">{part}</span>;
+      if (part === "true" || part === "false") return <span key={i} className="text-amber-600 dark:text-amber-300">{part}</span>;
+      if (part === "null") return <span key={i} className="text-purple-600 dark:text-purple-300">{part}</span>;
+      if (/^\d/.test(part)) return <span key={i} className="text-orange-600 dark:text-orange-300">{part}</span>;
+      return <span key={i}>{part}</span>;
+    });
+  }
+
+  if (lang === "bash") {
+    const lines = code.split("\n");
+    return lines.map((line, li) => {
+      let content: React.ReactNode;
+      if (line.startsWith("#")) {
+        content = <span className="text-gray-500 dark:text-gray-400 italic">{line}</span>;
+      } else {
+        const parts = line.split(/(curl|--data|-X|-H|-d|"[^"]*"|'[^']*'|-[a-zA-Z]+|https?:\/\/[^\s\\]+)/g);
+        content = parts.map((p, pi) => {
+          if (p === "curl") return <span key={pi} className="text-emerald-600 dark:text-emerald-400 font-semibold">{p}</span>;
+          if (["-X", "-H", "-d", "--data"].includes(p)) return <span key={pi} className="text-sky-600 dark:text-sky-300">{p}</span>;
+          if (p.startsWith("-")) return <span key={pi} className="text-sky-600 dark:text-sky-300">{p}</span>;
+          if (/^https?:\/\//.test(p)) return <span key={pi} className="text-amber-600 dark:text-amber-300">{p}</span>;
+          if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'")))
+            return <span key={pi} className="text-rose-600 dark:text-rose-300">{p}</span>;
+          return <span key={pi}>{p}</span>;
+        });
+      }
+      return <span key={li}>{content}{li < lines.length - 1 ? "\n" : ""}</span>;
+    });
+  }
+
+  if (lang === "javascript") {
+    const keywords = /\b(const|let|var|async|await|function|return|import|export|from|new|if|else|true|false|null|undefined)\b/g;
+    const strings = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)/g;
+    const comments = /(\/\/.*)/g;
+    // Simple line-by-line approach
+    return code.split("\n").map((line, li, arr) => {
+      let node: React.ReactNode;
+      if (line.trim().startsWith("//")) {
+        node = <span className="text-gray-500 dark:text-gray-400 italic">{line}</span>;
+      } else {
+        const marked = line
+          .replace(strings, m => `§STRING§${m}§/STRING§`)
+          .replace(keywords, m => `§KW§${m}§/KW§`)
+          .replace(comments, m => `§CMT§${m}§/CMT§`);
+        const tokens = marked.split(/(§STRING§.*?§\/STRING§|§KW§.*?§\/KW§|§CMT§.*?§\/CMT§)/g);
+        node = tokens.map((t, ti) => {
+          if (t.startsWith("§STRING§")) return <span key={ti} className="text-emerald-600 dark:text-emerald-300">{t.replace(/§STRING§|§\/STRING§/g, "")}</span>;
+          if (t.startsWith("§KW§"))     return <span key={ti} className="text-purple-600 dark:text-purple-300 font-medium">{t.replace(/§KW§|§\/KW§/g, "")}</span>;
+          if (t.startsWith("§CMT§"))    return <span key={ti} className="text-gray-500 dark:text-gray-400 italic">{t.replace(/§CMT§|§\/CMT§/g, "")}</span>;
+          return <span key={ti}>{t}</span>;
+        });
+      }
+      return <span key={li}>{node}{li < arr.length - 1 ? "\n" : ""}</span>;
+    });
+  }
+
+  if (lang === "python") {
+    const keywords = /\b(import|from|def|return|print|True|False|None|if|else|elif|for|in|as|with|async|await|class|and|or|not|f)\b/g;
+    return code.split("\n").map((line, li, arr) => {
+      let node: React.ReactNode;
+      if (line.trim().startsWith("#")) {
+        node = <span className="text-gray-500 dark:text-gray-400 italic">{line}</span>;
+      } else {
+        const marked = line
+          .replace(/(f?"[^"]*"|f?'[^']*')/g, m => `§STR§${m}§/STR§`)
+          .replace(keywords, m => `§KW§${m}§/KW§`);
+        const tokens = marked.split(/(§STR§.*?§\/STR§|§KW§.*?§\/KW§)/g);
+        node = tokens.map((t, ti) => {
+          if (t.startsWith("§STR§")) return <span key={ti} className="text-emerald-600 dark:text-emerald-300">{t.replace(/§STR§|§\/STR§/g, "")}</span>;
+          if (t.startsWith("§KW§"))  return <span key={ti} className="text-purple-600 dark:text-purple-300 font-medium">{t.replace(/§KW§|§\/KW§/g, "")}</span>;
+          return <span key={ti}>{t}</span>;
+        });
+      }
+      return <span key={li}>{node}{li < arr.length - 1 ? "\n" : ""}</span>;
+    });
+  }
+
+  if (lang === "php") {
+    const keywords = /\b(function|use|echo|return|array|true|false|null|if|else|foreach|in|new|string|int|bool|array)\b/g;
+    return code.split("\n").map((line, li, arr) => {
+      let node: React.ReactNode;
+      if (line.trim().startsWith("//")) {
+        node = <span className="text-gray-500 dark:text-gray-400 italic">{line}</span>;
+      } else {
+        const marked = line
+          .replace(/("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g, m => `§STR§${m}§/STR§`)
+          .replace(/(\$\w+)/g, m => `§VAR§${m}§/VAR§`)
+          .replace(keywords, m => `§KW§${m}§/KW§`)
+          .replace(/(<\?php|=>|->)/g, m => `§OP§${m}§/OP§`);
+        const tokens = marked.split(/(§STR§.*?§\/STR§|§VAR§.*?§\/VAR§|§KW§.*?§\/KW§|§OP§.*?§\/OP§)/g);
+        node = tokens.map((t, ti) => {
+          if (t.startsWith("§STR§")) return <span key={ti} className="text-emerald-600 dark:text-emerald-300">{t.replace(/§STR§|§\/STR§/g, "")}</span>;
+          if (t.startsWith("§VAR§")) return <span key={ti} className="text-sky-600 dark:text-sky-300">{t.replace(/§VAR§|§\/VAR§/g, "")}</span>;
+          if (t.startsWith("§KW§"))  return <span key={ti} className="text-purple-600 dark:text-purple-300 font-medium">{t.replace(/§KW§|§\/KW§/g, "")}</span>;
+          if (t.startsWith("§OP§"))  return <span key={ti} className="text-amber-600 dark:text-amber-300">{t.replace(/§OP§|§\/OP§/g, "")}</span>;
+          return <span key={ti}>{t}</span>;
+        });
+      }
+      return <span key={li}>{node}{li < arr.length - 1 ? "\n" : ""}</span>;
+    });
+  }
+
+  return <>{code}</>;
+}
+
+// ── Theme-aware code block ────────────────────────────────────────────────────
 function CodeBlock({ code, language = "bash" }: { code: string; language?: string }) {
+  const lang = (language as Lang);
   return (
-    <div className="relative">
-      <div className="bg-gray-900 rounded-xl p-4 pr-12 overflow-x-auto">
-        <pre className="text-sm text-gray-100 font-mono leading-relaxed whitespace-pre">{code}</pre>
+    <div className="relative group">
+      {/* Light theme: light gray bg, dark theme: near-black */}
+      <div className="bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl overflow-x-auto">
+        <div className="px-4 pt-8 pb-4">
+          <pre className="text-sm font-mono leading-relaxed whitespace-pre text-gray-800 dark:text-gray-200">
+            {highlight(code, lang)}
+          </pre>
+        </div>
       </div>
-      <span className="absolute top-3 left-4 text-[10px] text-gray-500 font-mono">{language}</span>
-      <CopyButton text={code} />
+      {/* Language badge */}
+      <span className="absolute top-2.5 left-4 text-[10px] font-mono text-gray-400 dark:text-gray-500 select-none pointer-events-none">
+        {language}
+      </span>
+      <CopyButton text={code} light={false} />
     </div>
   );
 }
 
+// ── Tabbed code block for multiple languages ──────────────────────────────────
+type TabEntry = { label: string; language: Lang; code: string };
+
+function TabbedCodeBlock({ tabs }: { tabs: TabEntry[] }) {
+  const [active, setActive] = useState(0);
+  const tab = tabs[active];
+  return (
+    <div>
+      {/* Tab bar */}
+      <div className="flex gap-0.5 mb-0 bg-gray-100 dark:bg-gray-950 border border-b-0 border-gray-200 dark:border-gray-800 rounded-t-xl px-2 pt-2 overflow-x-auto">
+        {tabs.map((t, i) => (
+          <button
+            key={t.label}
+            onClick={() => setActive(i)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+              i === active
+                ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-b-0 border-gray-200 dark:border-gray-700"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {/* Code area */}
+      <div className="relative bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-b-xl rounded-tr-xl overflow-x-auto">
+        <div className="px-4 pt-4 pb-4">
+          <pre className="text-sm font-mono leading-relaxed whitespace-pre text-gray-800 dark:text-gray-200">
+            {highlight(tab.code, tab.language)}
+          </pre>
+        </div>
+        <CopyButton text={tab.code} />
+      </div>
+    </div>
+  );
+}
+
+// ── Misc ──────────────────────────────────────────────────────────────────────
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold font-mono ${color}`}>
@@ -66,8 +240,8 @@ function Endpoint({ method, path, summary, description, params, body, response, 
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-foreground/50 transition-colors"
       >
         <Badge color={methodColors[method]}>{method}</Badge>
-        <code className="text-sm font-mono font-medium text-main flex-1">{path}</code>
-        <span className="text-sm text-muted hidden sm:block">{summary}</span>
+        <code className="text-sm font-mono font-medium text-main flex-1 truncate">{path}</code>
+        <span className="text-sm text-muted hidden sm:block shrink-0">{summary}</span>
         {open ? <ChevronDown size={16} className="text-muted shrink-0" /> : <ChevronRight size={16} className="text-muted shrink-0" />}
       </button>
       {open && (
@@ -77,8 +251,8 @@ function Endpoint({ method, path, summary, description, params, body, response, 
           {params && params.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Path / Query Parameters</p>
-              <div className="rounded-xl border border-line overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="rounded-xl border border-line overflow-hidden overflow-x-auto">
+                <table className="w-full text-sm min-w-[400px]">
                   <thead className="bg-foreground">
                     <tr>
                       <th className="text-left px-3 py-2 text-xs font-semibold text-muted">Name</th>
@@ -109,8 +283,8 @@ function Endpoint({ method, path, summary, description, params, body, response, 
           {body && body.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Request Body (JSON)</p>
-              <div className="rounded-xl border border-line overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="rounded-xl border border-line overflow-hidden overflow-x-auto">
+                <table className="w-full text-sm min-w-[400px]">
                   <thead className="bg-foreground">
                     <tr>
                       <th className="text-left px-3 py-2 text-xs font-semibold text-muted">Field</th>
@@ -191,17 +365,18 @@ export default function ApiDocs() {
               Pass the key via the <code className="bg-foreground px-1.5 py-0.5 rounded text-xs font-mono">X-API-Key</code> header or as a query parameter.
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs font-semibold text-muted mb-2">Header (recommended)</p>
-                <CodeBlock code={`curl ${BASE}/monitors \\
-  -H "X-API-Key: gm_your_key_here"`} language="bash" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-muted mb-2">Query parameter</p>
-                <CodeBlock code={`curl "${BASE}/monitors?api_key=gm_your_key_here"`} language="bash" />
-              </div>
-            </div>
+            <TabbedCodeBlock tabs={[
+              {
+                label: "Header (recommended)",
+                language: "bash",
+                code: `curl ${BASE}/monitors \\\n  -H "X-API-Key: gm_your_key_here"`,
+              },
+              {
+                label: "Query parameter",
+                language: "bash",
+                code: `curl "${BASE}/monitors?api_key=gm_your_key_here"`,
+              },
+            ]} />
 
             <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 text-sm text-amber-700 dark:text-amber-300">
               <strong>Keep your key secret.</strong> Do not commit it to source control or expose it in client-side code. Rotate it immediately if it's compromised.
@@ -209,10 +384,10 @@ export default function ApiDocs() {
 
             <div>
               <p className="text-xs font-semibold text-muted mb-2">Key format</p>
-              <div className="bg-foreground rounded-xl p-3 font-mono text-xs text-muted">
-                <span className="text-emerald-500">gm_</span>
+              <div className="bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl p-3 font-mono text-xs text-gray-700 dark:text-gray-300">
+                <span className="text-emerald-600 dark:text-emerald-400">gm_</span>
                 <span>{"<64 hex chars>"}</span>
-                <span className="ml-3 not-mono text-muted">e.g. gm_1a2b3c4d5e6f...</span>
+                <span className="ml-3 text-gray-400 dark:text-gray-500">e.g. gm_1a2b3c4d5e6f...</span>
               </div>
             </div>
           </div>
@@ -233,7 +408,7 @@ export default function ApiDocs() {
               {[
                 { label: "Format", value: "JSON (application/json)" },
                 { label: "Auth", value: "X-API-Key header" },
-                { label: "Rate limit", value: "No hard limit (fair use)" },
+                { label: "Rate limit", value: "60 requests / minute" },
               ].map(i => (
                 <div key={i.label} className="bg-foreground rounded-xl p-3">
                   <p className="text-xs text-muted">{i.label}</p>
@@ -268,6 +443,7 @@ export default function ApiDocs() {
                     ["401", "Unauthorized — invalid or missing API key"],
                     ["403", "Forbidden — you don't own this resource, or limit reached"],
                     ["404", "Not found — monitor doesn't exist"],
+                    ["429", "Rate limit exceeded — max 60 req/min"],
                     ["500", "Server error — try again"],
                   ].map(([s, m]) => (
                     <tr key={s}>
@@ -310,7 +486,7 @@ export default function ApiDocs() {
       "notify_down": true,
       "notify_up": true,
       "created_at": "2025-01-15T10:00:00.000Z",
-      "history": [ ... ]
+      "history": [ "..." ]
     }
   ],
   "count": 1
@@ -331,7 +507,9 @@ export default function ApiDocs() {
   "url": "https://example.com",
   "last_status": "up",
   "uptime_pct": 99.8,
-  "history": [ { "status": "up", "response_time": 182, "checked_at": "..." }, ... ]
+  "history": [
+    { "status": "up", "response_time": 182, "checked_at": "..." }
+  ]
 }`}
               example={`curl ${BASE}/monitors/1 \\
   -H "X-API-Key: gm_your_key_here"`}
@@ -390,7 +568,7 @@ export default function ApiDocs() {
                 { name: "notify_down", type: "boolean", required: false, desc: "Toggle down alerts" },
                 { name: "notify_up", type: "boolean", required: false, desc: "Toggle recovery alerts" },
               ]}
-              response={`{ "id": 5, "name": "API Health v2", "interval_mins": 10, ... }`}
+              response={`{ "id": 5, "name": "API Health v2", "interval_mins": 10 }`}
               example={`curl -X PUT ${BASE}/monitors/5 \\
   -H "X-API-Key: gm_your_key_here" \\
   -H "Content-Type: application/json" \\
@@ -438,8 +616,7 @@ export default function ApiDocs() {
       "response_time": 145,
       "error_msg": null,
       "checked_at": "2025-01-15T12:05:00.000Z"
-    },
-    ...
+    }
   ]
 }`}
               example={`curl "${BASE}/monitors/5/history?limit=100" \\
@@ -449,17 +626,34 @@ export default function ApiDocs() {
           </div>
         </section>
 
-        {/* Code Examples */}
+        {/* Code Examples — tabbed */}
         <section data-aos="fade-up">
           <div className="flex items-center gap-2 mb-4">
             <Zap size={18} className="text-emerald-500" />
             <h2 className="text-lg font-bold font-outfit">Code Examples</h2>
           </div>
-          <div className="space-y-4">
 
+          <div className="space-y-6">
             <div>
-              <p className="text-xs font-semibold text-muted mb-2">Node.js (fetch)</p>
-              <CodeBlock language="javascript" code={`const API_KEY = "gm_your_key_here";
+              <p className="text-xs font-semibold text-muted mb-2">List & create monitors</p>
+              <TabbedCodeBlock tabs={[
+                {
+                  label: "cURL",
+                  language: "bash",
+                  code: `# List all monitors
+curl ${BASE}/monitors \\
+  -H "X-API-Key: gm_your_key_here"
+
+# Create a monitor
+curl -X POST ${BASE}/monitors \\
+  -H "X-API-Key: gm_your_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name":"My API","url":"https://api.example.com","intervalMins":5}'`,
+                },
+                {
+                  label: "Node.js",
+                  language: "javascript",
+                  code: `const API_KEY = "gm_your_key_here";
 const BASE    = "${BASE}";
 
 async function getMonitors() {
@@ -479,12 +673,12 @@ async function createMonitor(name, url, intervalMins = 5) {
   return res.json();
 }
 
-getMonitors();`} />
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-muted mb-2">Python (requests)</p>
-              <CodeBlock language="python" code={`import requests
+getMonitors();`,
+                },
+                {
+                  label: "Python",
+                  language: "python",
+                  code: `import requests
 
 API_KEY = "gm_your_key_here"
 BASE    = "${BASE}"
@@ -501,19 +695,12 @@ new_monitor = requests.post(
     headers=HEADERS,
     json={"name": "My API", "url": "https://api.example.com", "intervalMins": 5}
 ).json()
-print("Created:", new_monitor["id"])
-
-# Pause a monitor
-requests.put(
-    f"{BASE}/monitors/{new_monitor['id']}",
-    headers=HEADERS,
-    json={"is_active": False}
-)`} />
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-muted mb-2">PHP (curl)</p>
-              <CodeBlock language="php" code={`<?php
+print("Created:", new_monitor["id"])`,
+                },
+                {
+                  label: "PHP",
+                  language: "php",
+                  code: `<?php
 $apiKey = "gm_your_key_here";
 $base   = "${BASE}";
 
@@ -540,29 +727,130 @@ $new = apiRequest("POST", "/monitors", [
     "intervalMins" => 5
 ]);
 echo "Created ID: " . $new["id"] . PHP_EOL;
-?>`} />
+?>`,
+                },
+              ]} />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-muted mb-2">Pause, update & delete</p>
+              <TabbedCodeBlock tabs={[
+                {
+                  label: "cURL",
+                  language: "bash",
+                  code: `# Pause a monitor
+curl -X PUT ${BASE}/monitors/5 \\
+  -H "X-API-Key: gm_your_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{"is_active": false}'
+
+# Delete a monitor
+curl -X DELETE ${BASE}/monitors/5 \\
+  -H "X-API-Key: gm_your_key_here"
+
+# Trigger an immediate ping
+curl -X POST ${BASE}/monitors/5/ping \\
+  -H "X-API-Key: gm_your_key_here"`,
+                },
+                {
+                  label: "Node.js",
+                  language: "javascript",
+                  code: `const API_KEY = "gm_your_key_here";
+const BASE    = "${BASE}";
+const hdrs    = { "X-API-Key": API_KEY, "Content-Type": "application/json" };
+
+// Pause monitor 5
+await fetch(\`\${BASE}/monitors/5\`, {
+  method: "PUT",
+  headers: hdrs,
+  body: JSON.stringify({ is_active: false })
+});
+
+// Delete monitor 5
+await fetch(\`\${BASE}/monitors/5\`, { method: "DELETE", headers: hdrs });
+
+// Trigger a ping
+await fetch(\`\${BASE}/monitors/5/ping\`, { method: "POST", headers: hdrs });`,
+                },
+                {
+                  label: "Python",
+                  language: "python",
+                  code: `import requests
+
+API_KEY = "gm_your_key_here"
+BASE    = "${BASE}"
+HEADERS = {"X-API-Key": API_KEY}
+
+# Pause monitor 5
+requests.put(f"{BASE}/monitors/5", headers=HEADERS, json={"is_active": False})
+
+# Pause a monitor
+requests.put(
+    f"{BASE}/monitors/5",
+    headers=HEADERS,
+    json={"is_active": False}
+)
+
+# Delete monitor 5
+requests.delete(f"{BASE}/monitors/5", headers=HEADERS)
+
+# Trigger a ping
+requests.post(f"{BASE}/monitors/5/ping", headers=HEADERS)`,
+                },
+                {
+                  label: "PHP",
+                  language: "php",
+                  code: `<?php
+// Pause monitor 5
+apiRequest("PUT", "/monitors/5", ["is_active" => false]);
+
+// Delete monitor 5
+apiRequest("DELETE", "/monitors/5");
+
+// Trigger a ping
+apiRequest("POST", "/monitors/5/ping");
+?>`,
+                },
+              ]} />
             </div>
           </div>
         </section>
 
-        {/* Get started CTA */}
+        {/* SDKs note */}
         <section data-aos="fade-up">
-          <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-200 dark:border-emerald-900/40 rounded-2xl p-6 text-center space-y-3">
-            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl center mx-auto">
-              <Plus size={22} className="text-emerald-500" />
-            </div>
-            <h3 className="font-bold font-outfit text-lg">Ready to get started?</h3>
-            <p className="text-sm text-muted max-w-sm mx-auto">
-              Sign in, go to your Profile, open the API Keys tab, and create your first key.
-            </p>
-            <div className="flex gap-3 justify-center flex-wrap">
-              <a href="/profile" className="btn h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold">
-                Create API Key
-              </a>
-              <a href="/signup" className="btn h-10 px-5 rounded-xl bg-foreground text-sm font-medium">
-                Sign up free
-              </a>
-            </div>
+          <div className="flex items-center gap-2 mb-4">
+            <Trash2 size={18} className="text-emerald-500" />
+            <h2 className="text-lg font-bold font-outfit">Quick Reference</h2>
+          </div>
+          <div className="bg-background border border-line rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-foreground">
+                <tr>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted">Endpoint</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted">Method</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted">Description</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {[
+                  ["/monitors",            "GET",    "List all monitors + last 30 checks each"],
+                  ["/monitors",            "POST",   "Create a new monitor"],
+                  ["/monitors/:id",        "GET",    "Get one monitor + last 60 checks"],
+                  ["/monitors/:id",        "PUT",    "Update monitor settings"],
+                  ["/monitors/:id",        "DELETE", "Delete a monitor"],
+                  ["/monitors/:id/ping",   "POST",   "Trigger an immediate ping"],
+                  ["/monitors/:id/history","GET",    "Get history (max 200, use ?limit=N)"],
+                ].map(([ep, m, desc]) => (
+                  <tr key={ep + m}>
+                    <td className="px-4 py-2 font-mono text-xs text-main">{ep}</td>
+                    <td className="px-4 py-2">
+                      <Badge color={methodColors[m]}>{m}</Badge>
+                    </td>
+                    <td className="px-4 py-2 text-xs text-muted">{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 

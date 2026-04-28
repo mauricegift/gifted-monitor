@@ -1,5 +1,5 @@
 <h1 align="center">🟢 Gifted Monitor</h1>
-<p align="center"><b>24/7 uptime monitoring SaaS with instant email alerts and a full REST API</b></p>
+<p align="center"><b>A full-stack self hostable, user friendly minimal uptime monitoring SaaS with multi-DB support</b></p>
 
 <p align="center">
   <a href="https://monitor.giftedtech.co.ke"><img src="https://img.shields.io/badge/LIVE%20APP-monitor.giftedtech.co.ke-green?style=for-the-badge&logo=googlechrome" alt="Live App"/></a>
@@ -20,7 +20,7 @@
 <details>
 <summary>TAP TO EXPAND</summary>
 
-**Gifted Monitor** is a full-stack uptime monitoring SaaS. It watches your websites 24/7 and sends instant email alerts when something goes down — and again when it recovers.
+**Gifted Monitor** — A full-stack self hostable, user friendly minimal uptime monitoring SaaS with multi-DB support. It watches your websites 24/7 and sends instant Email alerts when something goes down — and again when it recovers.
 
 **Live at:** [https://monitor.giftedtech.co.ke](https://monitor.giftedtech.co.ke)
 
@@ -102,10 +102,11 @@ gifted-monitor/
 │   ├── package.json
 │   ├── .env.example          # Example environment file
 │   ├── lib/
-│   │   ├── server.js         # Express setup — API routes + static file serving
+│   │   ├── server.js         # Express setup — global rate limiter + API routes + static file serving
 │   │   ├── auth.js           # JWT sign/verify, requireAuth, requireApiKey middleware
 │   │   ├── ping.js           # Monitoring engine (interval-based pinger)
 │   │   ├── email.js          # Resend API email helpers (round-robin multi-domain)
+│   │   ├── ipcheck.js        # VPN/proxy/datacenter detection (ip-api.com, 24h cache)
 │   │   └── db/
 │   │       ├── index.js      # DB adapter selector (auto-detects from DATABASE_URL)
 │   │       └── adapters/
@@ -339,7 +340,7 @@ All tables are created automatically on first startup — no manual migrations n
 ```sql
 users          (id, username, name, email, password_hash, is_verified, is_admin,
                 is_superadmin, is_disabled, avatar, monitor_limit, notify_down,
-                notify_up, pending_email, created_at)
+                notify_up, pending_email, registration_ip, created_at)
 
 monitors       (id, user_id, name, url, path, method, body, interval_mins,
                 last_status, last_checked, uptime_pct, notify_down, notify_up,
@@ -918,43 +919,176 @@ curl -X DELETE https://monitor.giftedtech.co.ke/api/v1/monitors/42 \
 ## 16. DEPLOYMENT
 
 <details>
-<summary>TAP TO EXPAND</summary>
+<summary>TAP TO EXPAND — Railway (Recommended — free tier available)</summary>
 
-**Recommended platforms:** Render, Railway, Fly.io, VPS (Ubuntu/Debian)
+Railway auto-detects Node.js projects and uses the included `railway.toml` config.
 
-**Steps:**
-
-1. Push the repo to GitHub
-2. Create a new web service pointing to the repo root
-3. Set **Build Command:** `npm run build`
-4. Set **Start Command:** `npm start`
-5. Add all required environment variables (see Section 6)
-6. Set `NODE_ENV=production`
-7. Deploy
-
-The backend automatically detects `frontend/dist/` and serves the full application from a single port.
-
-**VPS (Ubuntu/Debian) with PM2:**
+**1. Push to GitHub**
 ```bash
-# Clone and install
-git clone https://github.com/mauricegift/gifted-monitor.git /root/web/gifted-monitor
-cd /root/web/gifted-monitor
-cd backend && npm install && cd ../frontend && npm install && cd ..
-
-# Build
-cd frontend && npm run build && cd ..
-
-# Create .env
-cp backend/.env.example backend/.env
-# nano backend/.env   ← fill in your values
-
-# Start with PM2
-npm install -g pm2
-pm2 start backend/index.js --name gifted-monitor
-pm2 save && pm2 startup
+git push origin main
 ```
 
-**Nginx reverse proxy:**
+**2. Create a Railway project**
+- Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
+- Select your `gifted-monitor` repo
+- Railway reads `railway.toml` and sets `npm run build` / `npm start` automatically
+
+**3. Provision a PostgreSQL database**
+- In your Railway project: **New** → **Database** → **Add PostgreSQL**
+- Railway automatically sets the `DATABASE_URL` environment variable in your service
+
+**4. Set environment variables**
+
+In Railway → your service → **Variables** tab, add:
+
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `JWT_SECRET` | A long random string (use a password generator) |
+| `SESSION_SECRET` | Another long random string |
+| `FRONTEND_URL` | Your Railway public URL, e.g. `https://gifted-monitor.up.railway.app` |
+| `RESEND1_API_KEY` | Your Resend API key |
+| `RESEND1_DOMAIN` | Your verified Resend sending domain |
+
+`DATABASE_URL` is injected automatically by Railway's Postgres service.
+
+**5. Deploy**
+Railway triggers a build automatically on every push. The first deploy builds the frontend and starts the backend — all from one service on one port.
+
+**6. Custom domain (optional)**
+Railway service → **Settings** → **Domains** → **Add Custom Domain**
+
+> **Tip:** Railway free tier includes $5/month of usage — enough for a low-traffic personal instance.
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — Heroku (includes free Postgres via app.json)</summary>
+
+The included `Procfile` and `app.json` make Heroku deployment one-click or CLI-driven.
+
+**Option A — Deploy button (one-click)**
+
+Add this badge to your own fork's README and share it:
+
+```markdown
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/mauricegift/gifted-monitor)
+```
+
+This uses `app.json` to provision a free Postgres add-on and prompt for required env vars automatically.
+
+**Option B — Heroku CLI**
+
+```bash
+# Install Heroku CLI: https://devcenter.heroku.com/articles/heroku-cli
+heroku login
+heroku create your-app-name
+heroku addons:create heroku-postgresql:essential-0 -a your-app-name
+
+# Set required environment variables
+heroku config:set NODE_ENV=production -a your-app-name
+heroku config:set JWT_SECRET=$(openssl rand -hex 32) -a your-app-name
+heroku config:set SESSION_SECRET=$(openssl rand -hex 32) -a your-app-name
+heroku config:set FRONTEND_URL=https://your-app-name.herokuapp.com -a your-app-name
+heroku config:set RESEND1_API_KEY=re_xxxx -a your-app-name
+heroku config:set RESEND1_DOMAIN=alerts.yourdomain.com -a your-app-name
+
+# Deploy
+git push heroku main
+```
+
+**3. Open the app**
+```bash
+heroku open -a your-app-name
+```
+
+**4. View logs**
+```bash
+heroku logs --tail -a your-app-name
+```
+
+> **Note:** Heroku no longer has a free dyno tier. Use the **Eco** ($5/month) or **Basic** ($7/month) plan.
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — Render (free tier available)</summary>
+
+The included `render.yaml` provides full Infrastructure-as-Code setup: web service + free PostgreSQL database.
+
+**Option A — Blueprint (recommended — deploys everything from render.yaml)**
+
+1. Go to [render.com](https://render.com) → **New** → **Blueprint**
+2. Connect your GitHub repo
+3. Render detects `render.yaml` and creates both the web service and the database
+4. Fill in the prompted `sync: false` variables:
+   - `FRONTEND_URL` → your Render URL, e.g. `https://gifted-monitor.onrender.com`
+   - `RESEND1_API_KEY` → your Resend API key
+   - `RESEND1_DOMAIN` → your verified sending domain
+5. Click **Apply** → Render builds and deploys automatically
+
+**Option B — Manual service**
+
+1. **New** → **Web Service** → connect your repo
+2. Set:
+   - **Build Command:** `npm run build`
+   - **Start Command:** `npm start`
+   - **Environment:** Node
+3. **New** → **PostgreSQL** → create a database named `gifted-monitor-db`
+4. Copy the database **Internal Connection String** into your web service's `DATABASE_URL` env var
+5. Add remaining env vars (`NODE_ENV`, `JWT_SECRET`, `SESSION_SECRET`, `FRONTEND_URL`, `RESEND1_API_KEY`, `RESEND1_DOMAIN`)
+6. Click **Create Web Service**
+
+**Auto-deploys**
+Render re-deploys automatically on every push to `main`.
+
+> **Note:** On the free tier, the web service spins down after 15 minutes of inactivity. The first request after a spin-down may take ~30 seconds. Free PostgreSQL databases are available for 90 days then require an upgrade.
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — VPS / Self-hosted (Ubuntu/Debian) with PM2 + Nginx</summary>
+
+**1. Install Node.js 20 (via nvm)**
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install 20 && nvm use 20
+```
+
+**2. Clone and install dependencies**
+```bash
+git clone https://github.com/mauricegift/gifted-monitor.git /srv/gifted-monitor
+cd /srv/gifted-monitor
+cd backend && npm install && cd ../frontend && npm install && cd ..
+```
+
+**3. Build the frontend**
+```bash
+cd frontend && npm run build && cd ..
+```
+
+**4. Configure environment variables**
+```bash
+cp backend/.env.example backend/.env
+nano backend/.env   # fill in all required values
+```
+
+**5. Start with PM2**
+```bash
+npm install -g pm2
+pm2 start backend/index.js --name gifted-monitor
+pm2 save
+pm2 startup   # follow the printed command to enable auto-start on reboot
+```
+
+**6. Configure Nginx as a reverse proxy**
+```bash
+sudo apt install nginx -y
+sudo nano /etc/nginx/sites-available/gifted-monitor
+```
+
+Paste:
 ```nginx
 server {
     listen 80;
@@ -963,15 +1097,60 @@ server {
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-> **First user is Super Admin** — register your own account immediately after deployment before sharing the link.
+```bash
+sudo ln -s /etc/nginx/sites-available/gifted-monitor /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**7. Enable HTTPS with Let's Encrypt**
+```bash
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d monitor.yourdomain.com
+```
+
+**8. Update on new releases**
+```bash
+cd /srv/gifted-monitor
+git pull origin main
+cd frontend && npm run build && cd ..
+pm2 restart gifted-monitor
+```
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — Environment variable checklist for all platforms</summary>
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL / MySQL / MongoDB connection URL |
+| `NODE_ENV` | Yes | Set to `production` |
+| `PORT` | Auto | Platform sets this; defaults to `3000` if not set |
+| `JWT_SECRET` | Yes | Long random string for signing JWTs |
+| `SESSION_SECRET` | Yes | Long random string for session management |
+| `FRONTEND_URL` | Yes | Full public URL of your app — used in email links |
+| `RESEND1_API_KEY` | Yes | Resend API key |
+| `RESEND1_DOMAIN` | Yes | Verified Resend sending domain |
+| `RESEND2_API_KEY` | No | Second Resend key (round-robin failover) |
+| `RESEND2_DOMAIN` | No | Second sending domain |
+| `RESEND3–5_*` | No | Up to 5 Resend accounts total |
+| `TIMEZONE` | No | Server timezone, e.g. `UTC` or `Africa/Nairobi` |
+| `PING_CHECK_INTERVAL_SECS` | No | Ping loop frequency (default: `10`) |
+| `MIN_PING_INTERVAL_MINS` | No | Minimum monitor interval (default: `0.5` = 30 s) |
+| `ALLOWED_ORIGINS` | No | CORS — only needed if frontend is hosted separately |
+
+> **After first deploy:** Register your account immediately — the first verified user automatically becomes the platform Super Admin.
 
 </details>
 
@@ -1007,8 +1186,11 @@ Register your own account immediately after deployment. The first account to com
 - The frontend Axios interceptor silently applies the new token — users are never interrupted
 
 **Rate limiting**
+- Global (all routes): 300 requests per 15 minutes per IP
+- Auth endpoints (login, signup, reset): 10 requests per 15 minutes per IP
+- Signup specifically: 3 attempts per hour per IP
 - OTP / verification endpoints: 5 requests per 15 minutes per IP
-- Auth endpoints: 20 requests per 15 minutes per IP
+- REST API v1: 60 requests per minute per IP
 
 **Monitor false-alarm prevention**
 - When a monitor returns a non-2xx response, the engine waits 8 seconds and retries once

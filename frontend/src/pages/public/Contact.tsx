@@ -1,21 +1,10 @@
 import { useState } from "react";
-import { MessageSquare, Mail, Globe, Send, CheckCircle } from "lucide-react";
+import { Mail, Globe, Send, CheckCircle, MessageCircle } from "lucide-react";
 import { PublicLayout } from "@/layouts";
 import { ButtonWithLoader } from "@/components/ui";
 import api from "@/config/api";
 
 const channels = [
-  {
-    icon: MessageSquare,
-    color: "bg-green-500",
-    title: "WhatsApp",
-    desc: "Fastest way to reach us. Chat with us directly.",
-    link: "https://wa.me/254700000000",
-    label: "Open WhatsApp →",
-    accent: "border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-950/20",
-    btnColor: "bg-green-500 hover:bg-green-600 text-white",
-    aos: "flip-left",
-  },
   {
     icon: Mail,
     color: "bg-blue-500",
@@ -25,6 +14,17 @@ const channels = [
     label: "maurice@giftedtech.co.ke",
     accent: "border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-950/20",
     btnColor: "bg-blue-500 hover:bg-blue-600 text-white",
+    aos: "zoom-in",
+  },
+  {
+    icon: MessageCircle,
+    color: "bg-green-500",
+    title: "WhatsApp",
+    desc: "Chat with us directly on WhatsApp for quick support.",
+    link: "https://wa.me/message/ZWHDTMQO5MTCB1",
+    label: "Chat on WhatsApp",
+    accent: "border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-950/20",
+    btnColor: "bg-green-500 hover:bg-green-600 text-white",
     aos: "zoom-in",
   },
   {
@@ -94,15 +94,15 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* Contact channels */}
+      {/* Contact channels — 3 cards, centered */}
       <section className="px-4 pb-8">
-        <div className="main grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto flex flex-wrap justify-center gap-4">
           {channels.map((c, i) => (
             <div
               key={c.title}
               data-aos={c.aos}
               data-aos-delay={String(i * 100)}
-              className={`border rounded-2xl p-6 text-center ${c.accent}`}
+              className={`border rounded-2xl p-6 text-center flex-1 min-w-[220px] max-w-[280px] ${c.accent}`}
             >
               <div className={`w-12 h-12 rounded-2xl ${c.color} center text-white mx-auto mb-4`}>
                 <c.icon size={22} />
@@ -135,12 +135,14 @@ export default function Contact() {
                 <p className="text-muted text-sm max-w-sm mx-auto mb-6">
                   Thanks for reaching out. We'll get back to you within 24 hours.
                 </p>
-                <button
-                  onClick={() => { setSent(false); setForm({ name: "", email: "", whatsapp: "", subject: "", message: "" }); }}
-                  className="btn h-10 px-6 rounded-xl bg-foreground text-sm font-medium"
-                >
-                  Send another message
-                </button>
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => { setSent(false); setForm({ name: "", email: "", whatsapp: "", subject: "", message: "" }); }}
+                    className="btn h-10 px-6 rounded-xl bg-foreground text-sm font-medium"
+                  >
+                    Send another message
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -175,25 +177,24 @@ export default function Contact() {
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div data-aos="fade-right" data-aos-delay="140">
-                      <label className="text-xs font-medium text-muted block mb-1.5">
-                        WhatsApp Number <span className="text-muted font-normal">(optional)</span>
-                      </label>
-                      <input
-                        type="tel" value={form.whatsapp} onChange={set("whatsapp")} placeholder="+254 700 000 000"
-                        className="w-full h-10 px-4 rounded-xl border border-line text-sm focus:border-emerald-500 transition-colors bg-background outline-none"
-                      />
-                    </div>
-                    <div data-aos="fade-left" data-aos-delay="140">
-                      <label className="text-xs font-medium text-muted block mb-1.5">
-                        Subject <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text" value={form.subject} onChange={set("subject")} placeholder="How can we help you?"
-                        className="w-full h-10 px-4 rounded-xl border border-line text-sm focus:border-emerald-500 transition-colors bg-background outline-none"
-                      />
-                    </div>
+                  <div data-aos="fade-up" data-aos-delay="100">
+                    <label className="text-xs font-medium text-muted block mb-1.5">
+                      WhatsApp Number <span className="text-xs text-muted font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="tel" value={form.whatsapp} onChange={set("whatsapp")} placeholder="+254 712 345 678"
+                      className="w-full h-10 px-4 rounded-xl border border-line text-sm focus:border-emerald-500 transition-colors bg-background outline-none"
+                    />
+                  </div>
+
+                  <div data-aos="fade-up" data-aos-delay="140">
+                    <label className="text-xs font-medium text-muted block mb-1.5">
+                      Subject <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text" value={form.subject} onChange={set("subject")} placeholder="How can we help you?"
+                      className="w-full h-10 px-4 rounded-xl border border-line text-sm focus:border-emerald-500 transition-colors bg-background outline-none"
+                    />
                   </div>
 
                   <div data-aos="zoom-in-up" data-aos-delay="180">

@@ -61,3 +61,31 @@ input, select, textarea {
 }
 
 .font-outfit { font-family: var(--font-outfit); }
+
+/* ── Custom scrollbars — all elements ─────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

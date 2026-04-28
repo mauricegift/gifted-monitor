@@ -10,7 +10,7 @@ const passwordSchema = z
   .regex(/[^A-Za-z0-9]/, "Must include a special character");
 
 export const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Enter a valid email"),
+  identifier: z.string().min(1, "Email or username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -66,6 +66,7 @@ export const changePasswordSchema = z.object({
 });
 
 export type LoginForm = z.infer<typeof loginSchema>;
+// identifier maps to email or username on submit
 export type SignupForm = z.infer<typeof signupSchema>;
 export type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>;
 export type VerifyOtpForm = z.infer<typeof verifyOtpSchema>;

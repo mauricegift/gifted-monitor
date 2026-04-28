@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Mail, MailOpen, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
+import { Mail, MailOpen, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, MessageCircle, Reply } from "lucide-react";
 import { AppLayout } from "@/layouts";
 import { Modal, ButtonWithLoader, Breadcrumb } from "@/components/ui";
 import { formatDate } from "@/helpers/formatDate";
@@ -89,7 +89,11 @@ export default function Messages() {
                     <p className={`text-sm truncate ${!msg.is_read ? "font-semibold" : "font-medium"}`}>{msg.subject}</p>
                     <span className="text-xs text-muted shrink-0">{formatDate(msg.created_at)}</span>
                   </div>
-                  <p className="text-xs text-muted truncate">{msg.name} · {msg.email}</p>
+                  <p className="text-xs text-muted truncate">
+                    {msg.name}
+                    {msg.email ? ` · ${msg.email}` : ""}
+                    {msg.whatsapp ? ` · 📱 ${msg.whatsapp}` : ""}
+                  </p>
                 </div>
               </div>
             ))}
@@ -111,17 +115,40 @@ export default function Messages() {
             <div className="bg-secondary rounded-xl p-3 space-y-1.5 text-sm">
               {[
                 { label: "From", value: selected.name },
-                { label: "Email", value: selected.email },
-                ...(selected.whatsapp ? [{ label: "WhatsApp", value: selected.whatsapp }] : []),
+                { label: "Email", value: selected.email || "—" },
+                selected.whatsapp ? { label: "WhatsApp", value: selected.whatsapp } : null,
                 { label: "Date", value: formatDate(selected.created_at) },
-              ].map(d => (
-                <div key={d.label} className="flex gap-2">
-                  <span className="text-muted w-20 shrink-0">{d.label}</span>
-                  <span className="font-medium break-all">{d.value}</span>
+              ].filter(Boolean).map(d => (
+                <div key={d!.label} className="flex gap-2">
+                  <span className="text-muted w-20 shrink-0">{d!.label}</span>
+                  <span className="font-medium break-all">{d!.value}</span>
                 </div>
               ))}
             </div>
             <div className="text-sm leading-relaxed whitespace-pre-wrap bg-secondary rounded-xl p-3">{selected.message}</div>
+
+            {/* Reply actions */}
+            <div className="flex flex-wrap gap-2">
+              {selected.email && (
+                <a
+                  href={`mailto:${selected.email}?subject=Re: ${encodeURIComponent(selected.subject)}`}
+                  className="flex-1 btn h-9 px-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 text-sm gap-2 min-w-[140px] hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                >
+                  <Reply size={14} /> Reply via Email
+                </a>
+              )}
+              {selected.whatsapp && (
+                <a
+                  href={`https://wa.me/${selected.whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${selected.name}, regarding your message: "${selected.subject}"`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 btn h-9 px-4 rounded-xl bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 text-sm gap-2 min-w-[140px] hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                >
+                  <MessageCircle size={14} /> Reply via WhatsApp
+                </a>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <button onClick={() => setSelected(null)} className="flex-1 h-10 rounded-xl btn bg-foreground text-sm">Close</button>
               <ButtonWithLoader

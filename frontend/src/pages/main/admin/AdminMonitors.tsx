@@ -225,7 +225,7 @@ export default function AdminMonitors() {
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <Link to={`/monitors/${m.id}`} title="View details" className="btn h-8 w-8 rounded-lg bg-foreground text-muted hover:text-emerald-500">
+                  <Link to={`/admin/monitors/${m.id}`} title="View details" className="btn h-8 w-8 rounded-lg bg-foreground text-muted hover:text-emerald-500">
                     <ExternalLink size={13} />
                   </Link>
                   <button onClick={() => openEdit(m)} title="Edit" className="btn h-8 w-8 rounded-lg bg-foreground text-muted hover:text-main"><Pencil size={13} /></button>

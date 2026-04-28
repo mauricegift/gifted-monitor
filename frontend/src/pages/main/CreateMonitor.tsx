@@ -33,7 +33,7 @@ export default function CreateMonitor() {
 
   return (
     <AppLayout>
-      <div className="max-w-xl space-y-6">
+      <div className="max-w-xl mx-auto space-y-6">
         <Breadcrumb crumbs={[{ label: "Monitors", to: "/monitors" }, { label: "New Monitor" }]} />
         <div className="flex items-center gap-3">
           <GobackButton />

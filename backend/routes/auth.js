@@ -5,11 +5,13 @@ const {
   generateToken, otpExpiry, signToken, signResetToken, verifyResetToken,
   hashPassword, comparePassword, sanitize, requireAuth,
 } = require("../lib/auth");
+const { checkIpReputation, getClientIp } = require("../lib/ipcheck");
 const mailer = require("../lib/email");
 const config = require("../config");
 
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: "Too many attempts. Try again in 15 minutes." } });
-const otpLimiter  = rateLimit({ windowMs: 15 * 60 * 1000, max: 5,  message: { error: "Too many requests. Try again in 15 minutes." } });
+const authLimiter   = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: "Too many attempts. Try again in 15 minutes." }, standardHeaders: true, legacyHeaders: false });
+const otpLimiter    = rateLimit({ windowMs: 15 * 60 * 1000, max: 5,  message: { error: "Too many requests. Try again in 15 minutes." }, standardHeaders: true, legacyHeaders: false });
+const signupLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3,  message: { error: "Too many signup attempts from this IP. Try again in 1 hour." }, standardHeaders: true, legacyHeaders: false });
 
 function validateEmail(email) {
   if (!email) return "Email is required";
@@ -32,7 +34,7 @@ function makeVerifyLink(email, token, type) {
 }
 
 // ── Signup ───────────────────────────────────────────────────────────────────
-router.post("/signup", authLimiter, async (req, res) => {
+router.post("/signup", signupLimiter, authLimiter, async (req, res) => {
   try {
     const db = getDB();
     const username  = sanitize(req.body.username);
@@ -57,9 +59,39 @@ router.post("/signup", authLimiter, async (req, res) => {
 
     const userCount = await db.getUserCount();
     const isFirstUser = userCount === 0;
+
+    // ── IP checks (skip for the very first user / platform owner) ───────────
+    const clientIp = getClientIp(req);
+    if (!isFirstUser && clientIp) {
+      // 1. VPN / proxy / datacenter detection
+      try {
+        const ipInfo = await checkIpReputation(clientIp);
+        if (ipInfo.blocked) {
+          return res.status(403).json({ error: ipInfo.reason });
+        }
+      } catch (e) {
+        console.warn("ipcheck failed:", e.message);
+        // fail-open — don't block on API error
+      }
+
+      // 2. One account per IP
+      if (db.getUserByRegistrationIp) {
+        const existingIpUser = await db.getUserByRegistrationIp(clientIp);
+        if (existingIpUser) {
+          return res.status(409).json({
+            error: "An account has already been created from this IP address. Contact support if you believe this is an error."
+          });
+        }
+      }
+    }
+
     const passwordHash = await hashPassword(password);
 
-    await db.createUser({ username: username.toLowerCase(), name, email: userEmail, whatsapp: "", passwordHash, isAdmin: isFirstUser, isSuperAdmin: isFirstUser });
+    await db.createUser({
+      username: username.toLowerCase(), name, email: userEmail,
+      whatsapp: "", passwordHash, isAdmin: isFirstUser, isSuperAdmin: isFirstUser,
+      registrationIp: clientIp || null
+    });
 
     const token = generateToken();
     await db.createOtp(userEmail, token, "signup", otpExpiry(30));
@@ -139,7 +171,7 @@ router.post("/resend-otp", otpLimiter, async (req, res) => {
 router.post("/login", authLimiter, async (req, res) => {
   try {
     const db = getDB();
-    const emailOrUsername = sanitize(req.body.email || req.body.username)?.toLowerCase();
+    const emailOrUsername = sanitize(req.body.identifier || req.body.email || req.body.username)?.toLowerCase();
     const password = req.body.password;
 
     if (!emailOrUsername || !password) return res.status(400).json({ error: "Email and password are required" });

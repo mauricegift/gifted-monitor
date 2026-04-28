@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Mail, Lock, LogIn } from "lucide-react";
+import { User2, Lock, LogIn } from "lucide-react";
 import { AuthLayout } from "@/layouts";
 import { InputWithIcon, ButtonWithLoader } from "@/components/ui";
 import { loginSchema, type LoginForm } from "@/schemas";
@@ -18,7 +18,7 @@ export default function Login() {
 
   const onSubmit = async (data: LoginForm) => {
     try {
-      const res = await api.post("/auth/login", data);
+      const res = await api.post("/auth/login", { identifier: data.identifier, password: data.password });
       setAuth(res.data.token, res.data.user);
       toast.success("Welcome back!");
       navigate("/dashboard");
@@ -37,14 +37,14 @@ export default function Login() {
     <AuthLayout title="Welcome back" subtitle="Sign in to your account" icon={<LogIn size={24} />}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <InputWithIcon
-          id="email"
-          icon={<Mail size={18} />}
-          label="Email address"
-          type="email"
-          placeholder="you@example.com"
-          autoComplete="email"
-          error={errors.email?.message}
-          {...register("email")}
+          id="identifier"
+          icon={<User2 size={18} />}
+          label="Email or username"
+          type="text"
+          placeholder="you@example.com or yourusername"
+          autoComplete="username"
+          error={errors.identifier?.message}
+          {...register("identifier")}
         />
         <InputWithIcon
           id="password"

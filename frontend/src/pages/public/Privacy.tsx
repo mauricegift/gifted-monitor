@@ -9,7 +9,7 @@ export default function Privacy() {
             Privacy <span className="text-emerald-500">Policy</span>
           </h1>
           <p data-aos="fade-up" data-aos-delay="100" className="text-muted text-base">
-            Last updated: April 2026
+            Last updated: 13th March 2026
           </p>
         </div>
       </section>
