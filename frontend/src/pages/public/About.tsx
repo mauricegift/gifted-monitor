@@ -42,7 +42,7 @@ export default function About() {
             <h2 className="text-2xl font-bold font-outfit mb-3">Who We Are</h2>
             <p className="text-muted leading-relaxed text-sm">
               Gifted Monitor is a product of{" "}
-              <a href="https://giftedtech.co.ke" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline font-medium">
+              <a href="https://gifted.co.ke" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline font-medium">
                 Gifted Tech
               </a>{" "}
               — a software development studio focused on building practical, well-crafted tools for developers and businesses.
