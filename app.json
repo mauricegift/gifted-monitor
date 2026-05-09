@@ -2,9 +2,9 @@
   "name": "Gifted Monitor",
   "description": "24/7 uptime monitoring SaaS with instant email alerts and a public REST API.",
   "repository": "https://github.com/mauricegift/gifted-monitor",
-  "logo": "https://files.giftedtech.co.ke/image/u2wvoimage.jpg",
+  "logo": "https://files.gifted.co.ke/image/u2wvoimage.jpg",
   "keywords": ["uptime", "monitoring", "alerts", "nodejs", "saas"],
-  "website": "https://monitor.giftedtech.co.ke",
+  "website": "https://monitor.gifted.co.ke",
   "success_url": "/api/status",
   "addons": [
     {
